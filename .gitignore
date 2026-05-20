@@ -1,0 +1,28 @@
+# Bytecode и кэш
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Виртуальное окружение
+venv/
+.venv/
+env/
+ENV/
+
+# Редакторы кода
+.vscode/
+.idea/
+
+# Файлы операционной системы
+.DS_Store
+Thumbs.db
+
+# Логи и базы данных
+*.log
+*.db
+*.sqlite3
+
+# Файлы настроек с секретами
+.env
+local_settings.py
