@@ -19,6 +19,7 @@ class MyGame(arcade.Window):
         self.gui_camera = None
         self.batch = Batch()
         self.score_text = None
+        self.is_paused = False
 
     def center_window(self):
         """Центрирует окно на экране"""
@@ -109,8 +110,9 @@ class MyGame(arcade.Window):
         self.batch.draw()
 
     def on_update(self, delta_time):
-        self.physics_engine.update()
-        self.update_camera()
+        if not self.is_paused:
+            self.physics_engine.update()
+            self.update_camera()
 
     def update_camera(self):
         if not self.player_list:
@@ -162,3 +164,17 @@ class MyGame(arcade.Window):
         player = self.player_list[0]
         if key in (arcade.key.LEFT, arcade.key.RIGHT):
             player.change_x = 0
+
+    def pause(self):
+        """Приостанавливает игру (не обновляет физику)"""
+        self.is_paused = True
+
+    def resume(self):
+        """Возобновляет игру"""
+        self.is_paused = False
+
+    def reset(self, difficulty=1):
+        """Сбрасывает игру с новой сложностью"""
+        self.difficulty = difficulty
+        self.setup()
+        self.is_paused = False
