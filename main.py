@@ -1,51 +1,16 @@
 import arcade
+
+from pyglet.display import get_display
 from pyglet.graphics import Batch
 
-# Константы окна
-SCREEN_WIDTH = 1000
-SCREEN_HEIGHT = 600
-SCREEN_TITLE = "Monster Chase"
-
-# Константы карты
-MAP_WIDTH = 3000
-MAP_HEIGHT = 600
-GROUND_HEIGHT = 32
-PLAYER_START_X = 100
-PLAYER_START_Y = 64
-
-# Константы игрока
-PLAYER_SCALE = 1.0
-PLAYER_JUMP_SPEED = 15
-PLAYER_MOVEMENT_SPEED = 5
-PLAYER_LIVES = 3
-
-# Константы физики
-GRAVITY = 0.8
-
-# Тайлы
-TILE_SCALE = 0.5
-TILE_SIZE = 64
-
-# Камера: плавность следования
-CAMERA_LERP = 0.12
-DEAD_ZONE_W = int(SCREEN_WIDTH * 0.35)
-DEAD_ZONE_H = int(SCREEN_HEIGHT * 0.45)
-
-
-class Player(arcade.Sprite):
-    def __init__(self):
-        super().__init__(
-            ":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png",
-            PLAYER_SCALE,
-        )
-        self.change_x = 0
-        self.change_y = 0
-        self.lives = PLAYER_LIVES
+from constants import *
+from classes import Player
 
 
 class MyGame(arcade.Window):
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.center_window()
         arcade.set_background_color(arcade.color.SKY_BLUE)
         self.player_list = None
         self.wall_list = None
@@ -55,14 +20,36 @@ class MyGame(arcade.Window):
         self.batch = Batch()
         self.score_text = None
 
+    def center_window(self):
+        """Центрирует окно на экране"""
+        # Получаем основной монитор через pyglet.display
+        display = get_display()
+        screens = display.get_screens()
+        screen = screens[0]  # основной экран
+
+        # Размер экрана
+        screen_width = screen.width
+        screen_height = screen.height
+
+        # Вычисляем позицию для центрирования
+        x = (screen_width - self.width) // 2
+        y = (screen_height - self.height) // 2
+
+        # Устанавливаем позицию окна
+        self.set_location(x, y)
+
     def setup(self):
         self.player_list = arcade.SpriteList()
         self.wall_list = arcade.SpriteList()
 
         # Игрок
-        player = Player()
-        player.center_x = PLAYER_START_X
-        player.center_y = PLAYER_START_Y
+        player = Player(
+            PLAYER_START_X,
+            PLAYER_START_Y,
+            PLAYER_SCALE,
+            PLAYER_HEALTH,
+            PLAYER_MOVEMENT_SPEED,
+        )
         self.player_list.append(player)
 
         # Земля
@@ -70,7 +57,8 @@ class MyGame(arcade.Window):
             ":resources:images/tiles/grassMid.png", TILE_SCALE
         )
         ground.center_x = MAP_WIDTH // 2
-        ground.center_y = GROUND_HEIGHT
+        # ground.center_y = GROUND_HEIGHT
+        ground.bottom = 0
         ground.width = MAP_WIDTH
         self.wall_list.append(ground)
 
@@ -94,6 +82,20 @@ class MyGame(arcade.Window):
             batch=self.batch,
         )
 
+        # Сердечки (жизни) — добавляем в batch
+        self.heart_texts = []  # список для хранения объектов сердечек
+        for i in range(PLAYER_LIVES):
+            heart = arcade.Text(
+                "❤️",
+                30 + i * 40,
+                SCREEN_HEIGHT - 40,
+                arcade.color.RED,
+                font_size=30,
+                anchor_x="center",
+                batch=self.batch,
+            )
+            self.heart_texts.append(heart)
+
     def on_draw(self):
         self.clear()
 
@@ -105,14 +107,6 @@ class MyGame(arcade.Window):
         # 2) GUI камера (интерфейс)
         self.gui_camera.use()
         self.batch.draw()
-
-        # Сердечки (жизни) — рисуем отдельно
-        for i in range(self.player_list[0].lives):
-            x = 30 + i * 40
-            y = SCREEN_HEIGHT - 40
-            arcade.draw_text(
-                "❤️", x, y, arcade.color.RED, font_size=30, anchor_x="center"
-            )
 
     def on_update(self, delta_time):
         self.physics_engine.update()
