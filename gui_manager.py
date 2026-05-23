@@ -9,6 +9,30 @@ from arcade.gui import (
     UIWidget,
 )
 
+button_style = {
+    "normal": arcade.gui.UIFlatButton.UIStyle(
+        bg=(255, 215, 0),  # золотой цвет (RGB)
+        border=arcade.color.DARK_GREEN,
+        border_width=2,
+        font_color=arcade.color.GRAY,
+        font_size=14,
+    ),
+    "hover": arcade.gui.UIFlatButton.UIStyle(
+        bg=(255, 255, 0),  # жёлтый
+        border=arcade.color.BLACK,
+        border_width=2,
+        font_color=arcade.color.BLACK,
+        font_size=14,
+    ),
+    "press": arcade.gui.UIFlatButton.UIStyle(
+        bg=(255, 165, 0),  # тёмно‑оранжевый
+        border=arcade.color.RED,
+        border_width=2,
+        font_color=arcade.color.WHITE,
+        font_size=14,
+    ),
+}
+
 
 class GUIManager:
     """Централизованное управление GUI для всех состояний"""
@@ -35,32 +59,7 @@ class GUIManager:
 
         # Создаём простую кнопку с полным набором стилей
         new_game_button = UIFlatButton(
-            text="НОВАЯ ИГРА",
-            width=200,
-            height=50,
-            style={
-                "normal": {
-                    "font_size": 20,
-                    "font_color": (255, 255, 255, 255),
-                    "bg_color": (0, 150, 0, 255),
-                    "border_color": (255, 255, 0, 255),
-                    "border_width": 3,
-                },
-                "hover": {
-                    "font_size": 20,
-                    "font_color": (255, 255, 0, 255),
-                    "bg_color": (0, 180, 0, 255),
-                    "border_color": (255, 255, 0, 255),
-                    "border_width": 3,
-                },
-                "press": {
-                    "font_size": 20,
-                    "font_color": (200, 200, 200, 255),
-                    "bg_color": (0, 100, 0, 255),
-                    "border_color": (200, 200, 0, 255),
-                    "border_width": 2,
-                },
-            },
+            text="НОВАЯ ИГРА", width=200, height=50, style=button_style
         )
         new_game_button.on_click = lambda event: on_new_game_callback(event)
 

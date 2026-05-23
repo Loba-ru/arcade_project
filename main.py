@@ -10,13 +10,34 @@ class GameWindow(arcade.Window):
 
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        self.background_color = arcade.color.BLACK
+        self.center_window()
+        self.background_color = arcade.color.AMAZON
         self.gui_manager = GUIManager(self)  # добавил GUI менеджер
         self.state_manager = StateManager(
             self, self.gui_manager
         )  # передаю в StateManager
         # Устанавливаю начальное состояние
         self.state_manager.change_state(StartView(self.state_manager))
+
+    def center_window(self):
+        """Центрирует окно на экране"""
+        # Получаем основной монитор через pyglet.display
+        from pyglet.display import get_display
+
+        display = get_display()
+        screens = display.get_screens()
+        screen = screens[0]  # основной экран
+
+        # Размер экрана
+        screen_width = screen.width
+        screen_height = screen.height
+
+        # Вычисляем позицию для центрирования
+        x = (screen_width - SCREEN_WIDTH) // 2
+        y = (screen_height - SCREEN_HEIGHT) // 2
+
+        # Устанавливаем позицию окна
+        self.set_location(x, y)
 
     def on_draw(self):
         self.state_manager.on_draw()
@@ -28,6 +49,9 @@ class GameWindow(arcade.Window):
 
     def on_key_press(self, key: int, modifiers: int):
         self.state_manager.on_key_press(key, modifiers)
+
+    def on_key_release(self, key: int, modifiers: int):
+        self.state_manager.on_key_release(key, modifiers)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
         self.gui_manager.on_mouse_press(x, y, button, modifiers)  # сначала GUI

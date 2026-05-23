@@ -24,6 +24,11 @@ class MyGame:
         self.batch = Batch()
         self.score_text = None
         self.is_paused = False
+        self.text_display = None
+        self.on_win_callback = None
+        self.on_lose_callback = None
+        self.on_menu_callback = None
+        self.difficulty = 1
 
     def center_window(self):
         """Центрирует окно на экране"""
@@ -101,6 +106,36 @@ class MyGame:
             )
             self.heart_texts.append(heart)
 
+        # Надпись внизу для тестирования ResultView
+        self.text_display = arcade.Text(
+            "W - победа | L - проигрыш | ESC - меню",
+            SCREEN_WIDTH // 2,
+            20,
+            arcade.color.LIGHT_GRAY,
+            16,
+            anchor_x="center",
+            batch=self.batch,
+        )
+
+        # Надпись вверху о выбранной сложности и текущем уровне
+        self.level_text = arcade.Text(
+            f"Уровень: Земля | Сложность: "
+            f"{['Лёгкая', 'Средняя', 'Тяжёлая'][self.difficulty]}",
+            SCREEN_WIDTH // 2,
+            SCREEN_HEIGHT - 40,
+            arcade.color.LIGHT_GRAY,
+            16,
+            anchor_x="center",
+            batch=self.batch,
+        )
+
+    def update_level_display(self, level_name):
+        """Обновляет отображение текущего уровня"""
+        self.level_text.text = (
+            f"Уровень: Земля | Сложность: "
+            f"{['Лёгкая', 'Средняя', 'Тяжёлая'][self.difficulty]}"
+        )
+
     def on_draw(self):
         self.window.clear()
 
@@ -163,6 +198,31 @@ class MyGame:
         elif key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
                 player.change_y = PLAYER_JUMP_SPEED
+
+        # Кнопки для тестирования ResultView
+        elif key == arcade.key.W:
+            print("[DEBUG] W pressed — победа")
+            if self.on_win_callback:
+                self.on_win_callback()
+            else:
+                print("[DEBUG] (нет callback, только вывод)")
+
+        elif key == arcade.key.L:
+            print("[DEBUG] L pressed — поражение")
+            if self.on_lose_callback:
+                self.on_lose_callback()
+            else:
+                print("[DEBUG] (нет callback, только вывод)")
+
+        elif key == arcade.key.ESCAPE:
+            print("[DEBUG] ESC pressed — меню/пауза")
+            if self.on_menu_callback:
+                self.on_menu_callback()
+            else:
+                # ESC -> пауза (движение останавливается),
+                # ещё раз ESC — возобновление
+                self.is_paused = not self.is_paused
+                print(f"[DEBUG] Пауза: {self.is_paused}")
 
     def on_key_release(self, key, modifiers):
         player = self.player_list[0]

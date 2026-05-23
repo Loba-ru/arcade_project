@@ -20,12 +20,19 @@ DIFFICULTY_EASY = 0
 DIFFICULTY_MEDIUM = 1
 DIFFICULTY_HARD = 2
 
+# ========== ФИЗИКА ==========
+GRAVITY = 0.8
+
+# ========== ТАЙЛЫ ==========
+TILE_SCALE = 0.5
+TILE_SIZE = 64
+
 # ========== КАРТА И ИГРОК ==========
 MAP_WIDTH = 3000
 MAP_HEIGHT = SCREEN_HEIGHT
 GROUND_HEIGHT = 64
 PLAYER_START_X = 100
-PLAYER_START_Y = 100
+PLAYER_START_Y = TILE_SIZE + TILE_SIZE // 2
 
 # ========== КОНСТАНТЫ ИГРОКА ==========
 PLAYER_SCALE = 1.0
@@ -33,13 +40,6 @@ PLAYER_HEALTH = 100
 PLAYER_LIVES = 3
 PLAYER_JUMP_SPEED = 15
 PLAYER_MOVEMENT_SPEED = 5
-
-# ========== ФИЗИКА ==========
-GRAVITY = 0.8
-
-# ========== ТАЙЛЫ ==========
-TILE_SCALE = 0.5
-TILE_SIZE = 64
 
 # ========== КАМЕРА ==========
 CAMERA_LERP = 0.12
@@ -52,3 +52,8 @@ SCORE_TEXT_Y = SCREEN_HEIGHT - 40
 HEARTS_START_X = 30
 HEARTS_START_Y = SCREEN_HEIGHT - 40
 HEART_OFFSET = 40
+
+# ========== РЕЖИМ ОТЛАДКИ ==========
+# True = заглушка (быстрое тестирование переходов)
+# False = настоящая игра (физика, игрок, камера)
+GAMEPLAY_USE_DUMMY = False
