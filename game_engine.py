@@ -7,9 +7,13 @@ from constants import *
 from classes import Player
 
 
-class MyGame(arcade.Window):
-    def __init__(self):
-        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+# class MyGame(arcade.Window):
+class MyGame:
+    # def __init__(self):
+    def __init__(self, window: arcade.Window):
+        # super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.window = window  # теперь получает готовое окно
+
         self.center_window()
         arcade.set_background_color(arcade.color.SKY_BLUE)
         self.player_list = None
@@ -33,11 +37,11 @@ class MyGame(arcade.Window):
         screen_height = screen.height
 
         # Вычисляем позицию для центрирования
-        x = (screen_width - self.width) // 2
-        y = (screen_height - self.height) // 2
+        x = (screen_width - SCREEN_WIDTH) // 2
+        y = (screen_height - SCREEN_HEIGHT) // 2
 
         # Устанавливаем позицию окна
-        self.set_location(x, y)
+        self.window.set_location(x, y)
 
     def setup(self):
         self.player_list = arcade.SpriteList()
@@ -98,7 +102,7 @@ class MyGame(arcade.Window):
             self.heart_texts.append(heart)
 
     def on_draw(self):
-        self.clear()
+        self.window.clear()
 
         # 1) Мировая камера
         self.world_camera.use()
@@ -178,3 +182,19 @@ class MyGame(arcade.Window):
         self.difficulty = difficulty
         self.setup()
         self.is_paused = False
+
+
+if __name__ == "__main__":
+    """Только для тестового запуска (игру запускать из main.py)!"""
+
+    window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+    game = MyGame(window)
+    game.setup()
+
+    # Перенаправляю события окна в game
+    window.on_draw = game.on_draw
+    window.on_update = game.on_update
+    window.on_key_press = game.on_key_press
+    window.on_key_release = game.on_key_release
+
+    arcade.run()

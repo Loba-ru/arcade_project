@@ -1,34 +1,58 @@
 import arcade
 from states import StateManager, StartView
+from gui_manager import GUIManager
 
-SCREEN_WIDTH = 1024
-SCREEN_HEIGHT = 768
-SCREEN_TITLE = "Monster Chase"
+from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 
 
 class GameWindow(arcade.Window):
+    """Окно игры, которое делегирует всё менеджеру состояний"""
+
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        self.state_manager = StateManager(self)
+        self.background_color = arcade.color.BLACK
+        self.gui_manager = GUIManager(self)  # добавил GUI менеджер
+        self.state_manager = StateManager(
+            self, self.gui_manager
+        )  # передаю в StateManager
+        # Устанавливаю начальное состояние
         self.state_manager.change_state(StartView(self.state_manager))
 
     def on_draw(self):
         self.state_manager.on_draw()
+        self.gui_manager.draw()  # рисовую GUI поверх
 
-    def on_update(self, delta_time):
+    def on_update(self, delta_time: float):
         self.state_manager.on_update(delta_time)
+        self.gui_manager.on_update(delta_time)  # обновляю GUI
 
-    def on_key_press(self, key, modifiers):
+    def on_key_press(self, key: int, modifiers: int):
         self.state_manager.on_key_press(key, modifiers)
 
-    def on_mouse_press(self, x, y, button, modifiers):
+    def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
+        self.gui_manager.on_mouse_press(x, y, button, modifiers)  # сначала GUI
         self.state_manager.on_mouse_press(x, y, button, modifiers)
 
-
-def main():
-    window = GameWindow()
-    arcade.run()
+    def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
+        self.gui_manager.on_mouse_motion(
+            x, y, dx, dy
+        )  # для эффектов наведения
 
 
 if __name__ == "__main__":
-    main()
+    window = GameWindow()
+    arcade.run()
+
+# Объяснение цепочки переходов между экранами:
+# StartView (ПРОБЕЛ/клик)
+# MenuView (<- -> для сложности, ENTER)
+# GameplayView (W = победа, L = проигрыш, M = меню)
+# ResultView (ПРОБЕЛ -> StartView, ESC -> выход)
+
+# TODO: Для реальной игры (после теста паттерна):
+# Заменить GameplayView на полноценную игровую сцену с:
+# - arcade.PhysicsEnginePlatformer
+# - TiledMap и TileMap
+# - Спавном врагов по таймеру (arcade.schedule)
+# - Системой жизней (3 сердечка)
+# - Сбором монет и ключом/дверью
