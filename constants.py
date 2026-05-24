@@ -1,3 +1,5 @@
+# ========== СИСТЕМНЫЕ КОНСТАНТЫ И ПАРАМЕТРЫ ==========
+
 # ========== БАЗОВЫЕ НАСТРОЙКИ ==========
 # Основное разрешение (4:3)
 SCREEN_WIDTH_4_3 = 1024
@@ -26,14 +28,21 @@ GRAVITY = 0.8
 # ========== ТАЙЛЫ ==========
 TILE_SCALE = 0.5
 TILE_SIZE = 64
+EMERALD_SCALE = 1
 
 # ========== КАРТА И ИГРОК ==========
 MAP_WIDTH = 3000
 MAP_HEIGHT = SCREEN_HEIGHT
 GROUND_HEIGHT = 64
-PLAYER_START_X = 100
-PLAYER_START_Y = TILE_SIZE + TILE_SIZE // 2
 LADDER_SPEED = 3
+
+# ========== ТОЧКИ СПАВНА ==========
+PLAYER_SPAWN_DEFAULT = (96, 96)
+PLAYER_SPAWN_GROUND = (96, 96)
+PLAYER_SPAWN_DUNGEON = (96, 96)
+PLAYER_SPAWN_SKY = (96, 96)
+
+SPAWN_EMERALD_SKY = (384, 96)
 
 # ========== КОНСТАНТЫ ИГРОКА ==========
 PLAYER_SCALE = 0.5

@@ -1,3 +1,9 @@
+# ========== УРОВНИ ИГРЫ ==========
+# BaseLevel (базовый класс)
+# ├── GroundLevel (уровень "Земля")
+# ├── DungeonLevel (уровень "Подземелье")
+# └── SkyLevel (уровень "Небо")
+
 import arcade
 from pyglet.graphics import Batch
 
@@ -19,7 +25,7 @@ class BaseLevel(arcade.View):
         self.map_name = map_name
         self.level_name = level_name
         self.next_level_name = next_level_name
-        self.spawn_point = spawn_point or (PLAYER_START_X, PLAYER_START_Y)
+        self.spawn_point = spawn_point or PLAYER_SPAWN_DEFAULT
 
         self.batch = Batch()
 
@@ -38,12 +44,17 @@ class BaseLevel(arcade.View):
         self.start_list = None
         self.entry_exit_list = None
         self.collision_list = None
+        self.emerald_list = None
 
         self.is_paused = False
         self.key_count = 0
         self.has_emerald = False
         self.up_pressed = False
         self.down_pressed = False
+
+        self.objective_state = (
+            "emerald" if self.level_name == "sky" else "portal"
+        )
 
     def setup(self):
         self.load_map()
@@ -52,6 +63,14 @@ class BaseLevel(arcade.View):
         self.setup_cameras()
         self.setup_gui()
         arcade.set_background_color(arcade.color.SKY_BLUE)
+
+        if self.level_name == "sky":
+            self.emerald_list = arcade.SpriteList()
+            emerald = arcade.Sprite(
+                ":resources:images/items/gemGreen.png", scale=EMERALD_SCALE
+            )
+            emerald.center_x, emerald.center_y = SPAWN_EMERALD_SKY
+            self.emerald_list.append(emerald)
 
     def load_map(self):
         self.tile_map = arcade.load_tilemap(self.map_name, TILE_SCALE)
@@ -89,6 +108,7 @@ class BaseLevel(arcade.View):
     def setup_cameras(self):
         self.world_camera = arcade.Camera2D()
         self.gui_camera = arcade.Camera2D()
+        self.world_camera.position = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
     def setup_gui(self):
         self.ui_level_difficulty_text = arcade.Text(
@@ -161,13 +181,12 @@ class BaseLevel(arcade.View):
         )
 
     def get_goal_text(self):
-        if self.level_name == "ground":
-            return "Цель: найти ключ"
-        if self.level_name == "dungeon":
-            return "Цель: найти ключ"
         if self.level_name == "sky":
-            return "Цель: найти изумруд"
-        return "Цель:"
+            if self.objective_state == "emerald":
+                return "Цель: найти изумруд"
+            return "Цель: найти портал"
+
+        return "Цель: найти портал"
 
     def on_draw(self):
         self.clear()
@@ -188,47 +207,33 @@ class BaseLevel(arcade.View):
         if self.player_list:
             self.player_list.draw()
 
-        self.gui_camera.use()
+        if self.emerald_list:
+            self.emerald_list.draw()
 
+        self.gui_camera.use()
         self.draw_gui()
 
     def draw_gui(self):
-        """Отрисовка интерфейса"""
         self.batch.draw()
 
     def on_update(self, delta_time):
         if self.is_paused:
             return
 
-        # Обновляем текст монет (если изменилось)
-        new_coin_text = f"Монеты: {self.game_manager.coin_count}"
-        if self.ui_coin_text.text != new_coin_text:
-            self.ui_coin_text.text = new_coin_text
+        self.ui_coin_text.text = f"Монеты: {self.game_manager.coin_count}"
 
-        # Обновляем цвет сердечек (если изменилось)
         for i in range(len(self.heart_texts)):
-            new_color = (
+            self.heart_texts[i].color = (
                 arcade.color.RED
                 if i < self.game_manager.lives
                 else arcade.color.GRAY
             )
-            if self.heart_texts[i].color != new_color:
-                self.heart_texts[i].color = new_color
 
-        # Обновляем текст "Уровень | Сложность" (если изменилось)
-        new_level_diff_text = self.game_manager.get_level_difficulty_text()
-        if self.ui_level_difficulty_text.text != new_level_diff_text:
-            self.ui_level_difficulty_text.text = new_level_diff_text
-
-        # Обновляем текст "Ключи" (если изменилось)
-        new_keys_text = f"Ключи: {self.key_count}"
-        if self.ui_left_text.text != new_keys_text:
-            self.ui_left_text.text = new_keys_text
-
-        # Обновляем текст "Цель" (если изменилось)
-        new_goal_text = self.get_goal_text()
-        if self.ui_right_text.text != new_goal_text:
-            self.ui_right_text.text = new_goal_text
+        self.ui_level_difficulty_text.text = (
+            self.game_manager.get_level_difficulty_text()
+        )
+        self.ui_left_text.text = f"Ключи: {self.key_count}"
+        self.ui_right_text.text = self.get_goal_text()
 
         if self.physics_engine.is_on_ladder():
             if self.up_pressed and not self.down_pressed:
@@ -251,10 +256,19 @@ class BaseLevel(arcade.View):
 
         self.update_camera()
         self.check_portal()
-        self.sync_gui()
 
-    def sync_gui(self):
-        pass
+        if self.emerald_list:
+            emerald_hit = arcade.check_for_collision_with_list(
+                self.player, self.emerald_list
+            )
+            for emerald in emerald_hit:
+                emerald.remove_from_sprite_lists()
+                self.game_manager.has_emerald = True
+                self.has_emerald = True
+                self.objective_state = "portal"
+                self.player.items.add("emerald")
+                print("[DEBUG] Подобран Изумруд!")
+                break
 
     def update_camera(self):
         if not self.player:
@@ -298,14 +312,12 @@ class BaseLevel(arcade.View):
             self.on_enter_portal()
 
     def on_enter_portal(self):
-        if self.next_level_name is None:
+        print(f"on_enter_portal: next_level_name = [{self.next_level_name}]")
+
+        if self.level_name == "ground" and self.game_manager.has_emerald:
+            self.game_manager.check_victory("ground")
             return
 
-        if self.level_name == "ground" and self.key_count == 0:
-            self.show_portal_hint("Нужен ключ")
-            return
-
-        self.clear_portal_hint()
         self.game_manager.change_level(self.next_level_name)
 
     def show_portal_hint(self, message: str):
@@ -320,38 +332,25 @@ class BaseLevel(arcade.View):
         self.setup()
 
     def on_key_press(self, key, modifiers):
-        # Горизонтальное движение
         if key == arcade.key.LEFT:
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT:
             self.player.change_x = PLAYER_MOVEMENT_SPEED
-
-        # Вертикальное движение и прыжок (клавиша UP)
         elif key == arcade.key.UP:
-            # Если на лестнице — просто поднимаемся
+            self.up_pressed = True
             if self.physics_engine.is_on_ladder():
-                self.up_pressed = True
                 self.player.change_y = LADDER_SPEED
-            # Если НЕ на лестнице, но можем прыгнуть (стоим на земле) — прыгаем
             elif self.physics_engine.can_jump():
                 self.player.change_y = PLAYER_JUMP_SPEED
-
-        # Движение вниз по лестнице (клавиша DOWN)
         elif key == arcade.key.DOWN:
+            self.down_pressed = True
             if self.physics_engine.is_on_ladder():
-                self.down_pressed = True
                 self.player.change_y = -LADDER_SPEED
-
-        # Прыжок по клавише ПРОБЕЛ (альтернатива UP)
         elif key == arcade.key.SPACE:
             if self.physics_engine.can_jump():
                 self.player.change_y = PLAYER_JUMP_SPEED
-
-        # Пауза
         elif key == arcade.key.ESCAPE:
             self.is_paused = not self.is_paused
-
-        # Для тестирования
         elif key == arcade.key.W:
             print("[DEBUG] W pressed — победа")
         elif key == arcade.key.L:
@@ -377,7 +376,7 @@ class GroundLevel(BaseLevel):
             map_name="assets/ladders_only.tmx",
             level_name="ground",
             next_level_name="dungeon",
-            spawn_point=(PLAYER_START_X, PLAYER_START_Y),
+            spawn_point=PLAYER_SPAWN_GROUND,
         )
 
 
@@ -388,7 +387,7 @@ class DungeonLevel(BaseLevel):
             map_name="assets/level2.tmx",
             level_name="dungeon",
             next_level_name="sky",
-            spawn_point=(PLAYER_START_X, PLAYER_START_Y),
+            spawn_point=PLAYER_SPAWN_DUNGEON,
         )
 
 
@@ -398,6 +397,6 @@ class SkyLevel(BaseLevel):
             game_manager=game_manager,
             map_name="assets/level3.tmx",
             level_name="sky",
-            next_level_name=None,
-            spawn_point=(PLAYER_START_X, PLAYER_START_Y),
+            next_level_name="ground",
+            spawn_point=PLAYER_SPAWN_SKY,
         )

@@ -1,3 +1,16 @@
+# ========== ТОЧКА ВХОДА И ГЛАВНОЕ ОКНО ==========
+# Основной файл запуска приложения
+
+# Класс GameWindow:
+#  - главное окно игры
+#  - инициализация менеджера состояний
+
+# Метод center_window:
+#  - центрирование окна на экране
+
+# Метод main (внизу):
+#  - главная точка входа в приложение
+
 import arcade
 from states import StateManager, StartView
 from gui_manager import GUIManager

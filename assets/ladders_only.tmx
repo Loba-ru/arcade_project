@@ -31,9 +31,9 @@
    eJxjYBhZIIXG5gMAJtAAZQ==
   </data>
  </layer>
- <layer id="10" name="collision" width="12" height="7" visible="0">
+ <layer id="10" name="collision" width="12" height="7">
   <data encoding="base64" compression="zlib">
-   eJxjYCANGCPRxjj4xmhqSTWfkJnoYrQE6PYRwgBtQQYu
+   eJwzZiANGCPRxjj46GKkmE2smejipJhPjnuIxQBVNAeT
   </data>
  </layer>
 </map>

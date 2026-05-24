@@ -1,3 +1,17 @@
+# ========== УПРАВЛЕНИЕ ЭКРАНАМИ ==========
+# Модуль реализует паттерн State для управления экранами приложения
+
+# Класс StateManager (менеджер состояний):
+#  - управляет тем, какой экран сейчас активен
+
+# Иерархия состояний:
+#
+# GameState (Базовый интерфейс состояния игры)
+# ├── StartView (загрузочный экран)
+# ├── MenuView (главное меню/пауза)
+# ├── GameplayView (игровой процесс)
+# └── ResultView (экран результата: победа/поражение)
+
 import arcade
 from abc import ABC, abstractmethod
 from pyglet.graphics import Batch
@@ -5,9 +19,6 @@ from pyglet.graphics import Batch
 
 from constants import SCREEN_TITLE, GAMEPLAY_USE_DUMMY
 from game_engine import MyGame
-
-# Нет циклического импорта, используем строковую аннотацию
-
 
 # Базовый интерфейс состояния игры
 
@@ -42,7 +53,7 @@ class GameState(ABC):
 
 
 class StateManager:
-    """Контекст — управляет текущим состоянием"""
+    """Контроллер экранов"""
 
     def __init__(self, window: arcade.Window, gui_manager=None):
         self.window = window

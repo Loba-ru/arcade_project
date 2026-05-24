@@ -1,3 +1,6 @@
+# ========== МЕНЕДЖЕР ИГРЫ ==========
+# Центральный модуль управления игровым процессом
+
 import arcade
 
 from constants import *
@@ -7,17 +10,17 @@ from levels import GroundLevel, DungeonLevel, SkyLevel
 class MyGame:
     def __init__(self, window: arcade.Window):
         self.window = window
+        self.has_emerald = False
+
         self.level_registry = {}
         self.current_view = None
 
-        # Словарь: техническое имя уровня -> красивое название
         self.level_display_names = {
             "ground": "Земля",
             "dungeon": "Подземелье",
             "sky": "Небо",
         }
 
-        # Список названий сложностей игры
         self.difficulty_names = ["Лёгкая", "Средняя", "Тяжёлая"]
 
         self.register_level("ground", GroundLevel)
@@ -60,8 +63,6 @@ class MyGame:
         if self.current_view is not None:
             self.current_view.is_paused = False
 
-    # ========== Методы для управления состоянием ==========
-
     def add_coin(self):
         self.coin_count += 1
 
@@ -72,22 +73,16 @@ class MyGame:
     def set_difficulty(self, level):
         self.difficulty = level
 
-    # ========== Методы для назначения callback-функций ==========
-
     def set_on_win_callback(self, callback):
-        """Назначает функцию, которая вызовется при победе."""
         self.on_win_callback = callback
 
     def set_on_lose_callback(self, callback):
-        """Назначает функцию, которая вызовется при поражении."""
         self.on_lose_callback = callback
 
     def set_on_menu_callback(self, callback):
-        """Назначает функцию, которая вызовется при вызове меню (паузы)."""
         self.on_menu_callback = callback
 
     def get_level_difficulty_text(self):
-        """Возвращает строку вида 'Уровень: Земля | Сложность: Средняя'"""
         level_name_display = self.level_display_names.get(
             getattr(self.current_view, "level_name", "unknown"), "Неизвестно"
         )
@@ -97,20 +92,21 @@ class MyGame:
             difficulty_name = "Ошибка"
         return f"Уровень: {level_name_display} | Сложность: {difficulty_name}"
 
+    def check_victory(self, current_level_name: str):
+        if current_level_name == "ground" and self.has_emerald:
+            print("[VICTORY] Игрок вернулся на старт с Изумрудом!")
+            self.on_win_callback()
+
 
 def center_window(window):
-    # Получаем основной монитор через pyglet.display
     from pyglet.display import get_display
 
     display = get_display()
     screens = display.get_screens()
-    screen = screens[0]  # основной экран
+    screen = screens[0]
 
-    # Вычисляем позицию для центрирования
     x = (screen.width - SCREEN_WIDTH) // 2
     y = (screen.height - SCREEN_HEIGHT) // 2
-
-    # Устанавливаем позицию окна
     window.set_location(x, y)
 
 
@@ -118,7 +114,7 @@ def main():
     window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     center_window(window)
     game = MyGame(window)
-    game.start_game("ground")  # "ground", "dungeon", "sky"
+    game.start_game("ground")
     arcade.run()
 
 

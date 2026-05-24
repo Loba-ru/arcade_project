@@ -1,3 +1,10 @@
+# ========== АРХИТЕКТУРА СУЩНОСТЕЙ ==========
+# Иерархия классов:
+#
+# Entity (базовый класс)
+# ├── Player (игрок)
+# └── Enemy (враг)
+
 import arcade
 from abc import ABC, abstractmethod
 import random
@@ -38,6 +45,7 @@ class Player(Entity):
         self.change_x = 0
         self.change_y = 0
         self.lives = 3
+        self.items = set()
 
     def update(self, delta_time: float):
         self.center_x += self.change_x * self.speed * delta_time
@@ -58,11 +66,6 @@ class Enemy(Entity, ABC):
     def update(self, delta_time: float):
         self.center_x += self.change_x * delta_time
         self.center_y += self.change_y * delta_time
-        # Отскок от границ (заглушка)
-        if self.center_x < 50 or self.center_x > 1024 - 50:
-            self.change_x *= -1
-        if self.center_y < 50 or self.center_y > 768 - 50:
-            self.change_y *= -1
 
 
 class EasyEnemy(Enemy):
