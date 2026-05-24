@@ -66,17 +66,3 @@ class GameWindow(arcade.Window):
 if __name__ == "__main__":
     window = GameWindow()
     arcade.run()
-
-# Объяснение цепочки переходов между экранами:
-# StartView (ПРОБЕЛ/клик)
-# MenuView (<- -> для сложности, ENTER)
-# GameplayView (W = победа, L = проигрыш, M = меню)
-# ResultView (ПРОБЕЛ -> StartView, ESC -> выход)
-
-# TODO: Для реальной игры (после теста паттерна):
-# Заменить GameplayView на полноценную игровую сцену с:
-# - arcade.PhysicsEnginePlatformer
-# - TiledMap и TileMap
-# - Спавном врагов по таймеру (arcade.schedule)
-# - Системой жизней (3 сердечка)
-# - Сбором монет и ключом/дверью

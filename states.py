@@ -2,10 +2,12 @@ import arcade
 from abc import ABC, abstractmethod
 from pyglet.graphics import Batch
 
+
 from constants import SCREEN_TITLE, GAMEPLAY_USE_DUMMY
 from game_engine import MyGame
 
 # Нет циклического импорта, используем строковую аннотацию
+
 
 # Базовый интерфейс состояния игры
 
@@ -83,8 +85,8 @@ class StateManager:
 class StartView(GameState):
     """Стартовое окно с названием и кнопкой 'Старт'"""
 
-    def __init__(self, manager: StateManager):
-        self.manager = manager
+    def __init__(self, state_manager: StateManager):
+        self.state_manager = state_manager
         self.gui_shown = False
         self.batch = None
         self.title_text = None
@@ -93,15 +95,15 @@ class StartView(GameState):
     def on_show(self):
         print("[State] Переход в StartView")
         arcade.set_background_color(arcade.color.AMAZON)
-        if self.manager.gui_manager:
-            self.manager.gui_manager.hide_gui()
+        if self.state_manager.gui_manager:
+            self.state_manager.gui_manager.hide_gui()
         self.gui_shown = False
 
         # Создаём Batch и тексты при первом показе
         if self.batch is None:
             self.batch = Batch()
-            w = self.manager.window.width
-            h = self.manager.window.height
+            w = self.state_manager.window.width
+            h = self.state_manager.window.height
             self.title_text = arcade.Text(
                 SCREEN_TITLE,
                 w // 2,
@@ -123,17 +125,17 @@ class StartView(GameState):
 
     def start_game(self, event):
         print("[GUI] Нажата кнопка 'Старт'")
-        self.manager.change_state(MenuView(self.manager))
+        self.state_manager.change_state(MenuView(self.state_manager))
 
     def on_key_press(self, key: int, modifiers: int):
         if key == arcade.key.SPACE:
-            self.manager.change_state(MenuView(self.manager))
+            self.state_manager.change_state(MenuView(self.state_manager))
 
     def on_key_release(self, key: int, modifiers: int):
         pass
 
     def on_draw(self):
-        self.manager.window.clear()
+        self.state_manager.window.clear()
         if self.batch:
             self.batch.draw()
 
@@ -141,14 +143,14 @@ class StartView(GameState):
         pass
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        self.manager.change_state(MenuView(self.manager))
+        self.state_manager.change_state(MenuView(self.state_manager))
 
 
 class MenuView(GameState):
     """Меню выбора сложности с поддержкой мыши"""
 
-    def __init__(self, manager: StateManager, return_to_game=None):
-        self.manager = manager
+    def __init__(self, state_manager: StateManager, return_to_game=None):
+        self.state_manager = state_manager
         self.difficulty = 1
         self.return_to_game = return_to_game
 
@@ -162,8 +164,8 @@ class MenuView(GameState):
         print("[State] Переход в MenuView")
         arcade.set_background_color(arcade.color.AMAZON)
 
-        w = self.manager.window.width
-        h = self.manager.window.height
+        w = self.state_manager.window.width
+        h = self.state_manager.window.height
 
         if self.return_to_game is None:
             self.difficulty = 1
@@ -230,13 +232,13 @@ class MenuView(GameState):
 
         self._update_text_colors()
 
-        if self.manager.gui_manager:
-            self.manager.gui_manager.show_menu_gui(
+        if self.state_manager.gui_manager:
+            self.state_manager.gui_manager.show_menu_gui(
                 on_new_game_callback=self.start_new_game
             )
 
     def _update_text_colors(self):
-        difficulties = ["ЛЕГКАЯ", "СРЕДНЯЯ", "ВЫСОКАЯ"]
+        difficulties = ["ЛЕГКАЯ", "СРЕДНЯЯ", "ТЯЖЁЛАЯ"]
         for i, text in enumerate(self.difficulty_texts):
             marker = "▶ " if i == self.difficulty else "\u2800  "
             text.text = f"{marker}{difficulties[i]}"
@@ -248,10 +250,12 @@ class MenuView(GameState):
 
     def start_new_game(self, event):
         print("[GUI] Нажата кнопка 'Новая игра'")
-        self.manager.change_state(GameplayView(self.manager, self.difficulty))
+        self.state_manager.change_state(
+            GameplayView(self.state_manager, self.difficulty)
+        )
 
     def on_draw(self):
-        self.manager.window.clear()
+        self.state_manager.window.clear()
         if self.batch:
             self.batch.draw()
 
@@ -270,9 +274,9 @@ class MenuView(GameState):
         elif key == arcade.key.ENTER:
             self.start_new_game(None)
         elif key == arcade.key.ESCAPE and self.return_to_game:
-            if self.manager.gui_manager:
-                self.manager.gui_manager.hide_gui()
-            self.manager.change_state(self.return_to_game)
+            if self.state_manager.gui_manager:
+                self.state_manager.gui_manager.hide_gui()
+            self.state_manager.change_state(self.return_to_game)
 
     def on_key_release(self, key: int, modifiers: int):
         pass
@@ -294,10 +298,10 @@ class MenuView(GameState):
 class GameplayView(GameState):
     """Игровое окно (заглушка или настоящая игра по флагу)"""
 
-    def __init__(self, manager: StateManager, difficulty: int):
-        self.manager = manager
+    def __init__(self, state_manager: StateManager, difficulty: int):
+        self.state_manager = state_manager
         self.difficulty = difficulty
-        self.game = None
+        self.game_manager = None
         self.use_dummy = GAMEPLAY_USE_DUMMY  # ← флаг из constants.py
 
         # Для заглушки (batch и тексты)
@@ -318,8 +322,8 @@ class GameplayView(GameState):
             arcade.set_background_color(arcade.color.BLACK)
             if self.batch is None:
                 self.batch = Batch()
-                w = self.manager.window.width
-                h = self.manager.window.height
+                w = self.state_manager.window.width
+                h = self.state_manager.window.height
                 self.status_text = arcade.Text(
                     "ИГРА ЗАПУЩЕНА (ЗАГЛУШКА)",
                     w // 2,
@@ -347,76 +351,110 @@ class GameplayView(GameState):
                     anchor_x="center",
                     batch=self.batch,
                 )
-            if self.manager.gui_manager:
-                self.manager.gui_manager.hide_gui()
+            if self.state_manager.gui_manager:
+                self.state_manager.gui_manager.hide_gui()
 
         else:
             # ========== НАСТОЯЩАЯ ИГРА ==========
             print("[State] GameplayView: используется НАСТОЯЩАЯ ИГРА")
-            self.game = MyGame(self.manager.window)
-            self.game.setup()
 
-            self.game.on_win_callback = lambda: self.manager.change_state(
-                ResultView(
-                    self.manager,
-                    won=True,
-                    coins=15,
-                    kills=3,
-                    difficulty=self.difficulty,
+            # Создаём игровой движок
+            self.game_manager = MyGame(self.state_manager.window)
+
+            # Назначаем callback-и ПЕРЕД запуском игры
+            self.game_manager.set_on_win_callback(
+                lambda: self.state_manager.change_state(
+                    ResultView(
+                        self.state_manager,
+                        won=True,
+                        coins=self.game_manager.coin_count,
+                        kills=0,
+                        difficulty=self.difficulty,
+                    )
                 )
             )
-            self.game.on_lose_callback = lambda: self.manager.change_state(
-                ResultView(
-                    self.manager,
-                    won=False,
-                    coins=5,
-                    kills=1,
-                    difficulty=self.difficulty,
+            self.game_manager.set_on_lose_callback(
+                lambda: self.state_manager.change_state(
+                    ResultView(
+                        self.state_manager,
+                        won=False,
+                        coins=self.game_manager.coin_count,
+                        kills=0,
+                        difficulty=self.difficulty,
+                    )
                 )
             )
-            self.game.on_menu_callback = lambda: self.manager.change_state(
-                MenuView(self.manager, return_to_game=self)
+            self.game_manager.set_on_menu_callback(
+                lambda: self.state_manager.change_state(
+                    MenuView(self.state_manager, return_to_game=self)
+                )
             )
 
-            if self.manager.gui_manager:
-                self.manager.gui_manager.hide_gui()
+            # Запускаем игру с выбранным уровнем и сложностью
+            self.game_manager.start_game("ground")
+
+            # Передаем сложность в игру (если это влияет на геймплей)
+            self.game_manager.set_difficulty(self.difficulty)
+
+            if self.state_manager.gui_manager:
+                self.state_manager.gui_manager.hide_gui()
 
     def on_draw(self):
-        if self.use_dummy:
-            self.manager.window.clear()
+        if self.use_dummy:  # заглушка
+            self.state_manager.window.clear()
             if self.batch:
                 self.batch.draw()
-        else:
-            if self.game:
-                self.game.on_draw()
+        # настоящая игра
+        pass
 
     def on_update(self, delta_time):
-        if not self.use_dummy and self.game:
-            self.game.on_update(delta_time)
+        # настоящая игра
+        pass
 
     def on_key_press(self, key, modifiers):
-        if self.use_dummy:
+        if self.use_dummy:  # заглушка
             if key == arcade.key.W:
-                self.manager.change_state(
-                    ResultView(self.manager, won=True, coins=15, kills=3)
+                # Передаём сложность в ResultView
+                self.state_manager.change_state(
+                    ResultView(
+                        self.state_manager,
+                        won=True,
+                        coins=15,
+                        kills=3,
+                        difficulty=self.difficulty,
+                    )
                 )
             elif key == arcade.key.L:
-                self.manager.change_state(
-                    ResultView(self.manager, won=False, coins=5, kills=1)
+                # Передаём сложность в ResultView
+                self.state_manager.change_state(
+                    ResultView(
+                        self.state_manager,
+                        won=False,
+                        coins=5,
+                        kills=1,
+                        difficulty=self.difficulty,
+                    )
                 )
             elif key == arcade.key.ESCAPE or key == arcade.key.M:
-                self.manager.change_state(
-                    MenuView(self.manager, return_to_game=self)
+                self.state_manager.change_state(
+                    MenuView(self.state_manager, return_to_game=self)
                 )
-        else:
-            if self.game:
-                self.game.on_key_press(key, modifiers)
+        else:  # настоящая игра
+            # Перехватываем клавишу ESCAPE для вызова меню/паузы
+            # Вызываем callback, который настроили в on_show
+            if key == arcade.key.ESCAPE:
+                self.game_manager.on_menu_callback()
+            elif key == arcade.key.W:
+                self.game_manager.on_win_callback()
+            elif key == arcade.key.L:
+                self.game_manager.on_lose_callback()
 
     def on_key_release(self, key, modifiers):
-        if not self.use_dummy and self.game:
-            self.game.on_key_release(key, modifiers)
+        # настоящая игра
+        pass
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # настоящая игра
         pass
 
 
@@ -425,13 +463,13 @@ class ResultView(GameState):
 
     def __init__(
         self,
-        manager: StateManager,
+        state_manager: StateManager,
         won: bool,
         coins: int,
         kills: int,
         difficulty: int,
     ):
-        self.manager = manager
+        self.state_manager = state_manager
         self.won = won
         self.coins = coins
         self.kills = kills
@@ -446,14 +484,14 @@ class ResultView(GameState):
     def on_show(self):
         print(f"[State] Переход в ResultView (Победа: {self.won})")
         arcade.set_background_color(arcade.color.AMAZON)
-        if self.manager.gui_manager:
-            self.manager.gui_manager.hide_gui()
+        if self.state_manager.gui_manager:
+            self.state_manager.gui_manager.hide_gui()
 
         # Создаём Batch и тексты при первом показе
         if self.batch is None:
             self.batch = Batch()
-            w = self.manager.window.width
-            h = self.manager.window.height
+            w = self.state_manager.window.width
+            h = self.state_manager.window.height
 
             title = "ПОБЕДА!" if self.won else "GAME OVER"
             color = arcade.color.GREEN if self.won else arcade.color.RED
@@ -516,7 +554,7 @@ class ResultView(GameState):
         )
 
     def on_draw(self):
-        self.manager.window.clear()
+        self.state_manager.window.clear()
         if self.batch:
             self.batch.draw()
 
@@ -525,9 +563,9 @@ class ResultView(GameState):
 
     def on_key_press(self, key: int, modifiers: int):
         if key == arcade.key.SPACE:
-            if self.manager.gui_manager:
-                self.manager.gui_manager.hide_gui()
-            self.manager.change_state(StartView(self.manager))
+            if self.state_manager.gui_manager:
+                self.state_manager.gui_manager.hide_gui()
+            self.state_manager.change_state(StartView(self.state_manager))
         elif key == arcade.key.ESCAPE:
             arcade.close_window()
 
