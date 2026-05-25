@@ -10,7 +10,7 @@ from levels import GroundLevel, DungeonLevel, SkyLevel
 class MyGame:
     def __init__(self, window: arcade.Window):
         self.window = window
-        self.has_emerald = False
+        self.has_all_gems = False
 
         self.level_registry = {}
         self.current_view = None
@@ -93,8 +93,10 @@ class MyGame:
         return f"Уровень: {level_name_display} | Сложность: {difficulty_name}"
 
     def check_victory(self, current_level_name: str):
-        if current_level_name == "ground" and self.has_emerald:
-            print("[VICTORY] Игрок вернулся на старт с Изумрудом!")
+        if current_level_name == "ground" and self.has_all_gems:
+            print(
+                "[VICTORY] Игрок вернулся на старт со всеми драгоценностями!"
+            )
             self.on_win_callback()
 
 

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="14" nextobjectid="1">
+ <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
+ <layer id="1" name="platform" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgF9AIsVFZHrB4VINaHsvUJYFUkfUpo+pSxmKnPgGm2ARnuHwXkA3xxT05awqcPWVwTiLWQsDaauDaaWnR5bGrQzcFm1igYfIBQOiMmHYLUECqfkMsbBhLUE8IAde8MkA==
+  </data>
+ </layer>
+ <layer id="5" name="ladders" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFIwUY0VAfPjWGZNpLjD58akbtpY+9yIBQWiE2DZKaVgm5j1j3kxqGo/bSx15aAwBE2AXF
+  </data>
+ </layer>
+ <layer id="7" name="decoration" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFAwmskdjyeNThkrPGIT4KRi6gVjrCZ84oGDkAPR0QU+YQm3YGS/kFACXeAgE=
+  </data>
+ </layer>
+ <layer id="8" name="door" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFwxVYDbQDRsEoGAWjYAgAADMPADs=
+  </data>
+ </layer>
+ <layer id="9" name="hazards" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMAqGDpgMxdQCAGCcASc=
+  </data>
+ </layer>
+ <layer id="3" name="collision" width="30" height="15" visible="0">
+  <data encoding="base64" compression="zlib">
+   eJxjYmBgYBogTG8w0uyF2T0Qdo7aO2rvqL1D196BAANlLwgAAEpuAG0=
+  </data>
+ </layer>
+ <layer id="12" name="blockB" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFwxWwDLQDRsEoGAWjYAgAABu4AAU=
+  </data>
+ </layer>
+ <layer id="13" name="blockA" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMAoQgGWgHUBnAAAKyAAF
+  </data>
+ </layer>
+ <layer id="11" name="entry_exitB" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMAoQIGmgHUBnAABi6ABj
+  </data>
+ </layer>
+ <layer id="6" name="entry_exitA" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFwxUkDbQDRsEoGAWjYAgAAAH+AGM=
+  </data>
+ </layer>
+ <layer id="10" name="startB" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFwxUkD7QDRsEoGAWjYAgAAAcqAGQ=
+  </data>
+ </layer>
+ <layer id="2" name="startA" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFo2AUjIJRMAoQIGWgHUBnAABkyABl
+  </data>
+ </layer>
+</map>

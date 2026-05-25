@@ -1,13 +1,54 @@
 # ========== АРХИТЕКТУРА СУЩНОСТЕЙ ==========
-# Иерархия классов:
 #
+# Иерархия классов Существ:
 # Entity (базовый класс)
 # ├── Player (игрок)
 # └── Enemy (враг)
+#
+# Вспомогательный класс для Player:
+# Inventory (Инвентарь игрока)
+#
+# Иерархия классов внутриигровых предметов:
+# BaseItem (базовый класс)
+# ├── Emerald (Изумруд)
+# ├── Sapphire (Сапфир)
+# ├── Ruby (Рубин)
+# └── Key (Ключ)
 
 import arcade
-from abc import ABC, abstractmethod
 import random
+from abc import ABC, abstractmethod
+
+from constants import *
+
+
+class Inventory:
+    """Инвентарь игрока"""
+
+    def __init__(self):
+        self.items = {}  # {"emerald": 1, "sapphire": 1, "ruby": 1, "coin": 15}
+
+    def add(self, item_type, count=1):
+        self.items[item_type] = self.items.get(item_type, 0) + count
+
+    def discard(self, item_type, count=1):
+        if item_type in self.items:
+            old_count = self.items.get(item_type, 0)
+            if old_count - count > 0:
+                self.items[item_type] = old_count - count
+            else:
+                self.items.pop(item_type)
+
+    def has(self, item_type, count=1):
+        return self.items.get(item_type, 0) >= count
+
+    def get_count(self, item_type):
+        return self.items.get(item_type, 0)
+
+    def total_gems(self):
+        """Возвращает общее количество драгоценных камней"""
+        gem_types = ["emerald", "sapphire", "ruby"]
+        return sum(self.get_count(g) for g in gem_types)
 
 
 class Entity(arcade.Sprite, ABC):
@@ -45,7 +86,7 @@ class Player(Entity):
         self.change_x = 0
         self.change_y = 0
         self.lives = 3
-        self.items = set()
+        self.inventory = Inventory()
 
     def update(self, delta_time: float):
         self.center_x += self.change_x * self.speed * delta_time
@@ -105,3 +146,36 @@ class HardEnemy(Enemy):
         )
         self.center_x = x
         self.center_y = y
+
+
+class BaseItem(arcade.Sprite):
+    def __init__(self, image_path, scale, gem_type, x, y):
+        super().__init__(image_path, scale)
+        self.gem_type = gem_type
+        self.center_x = x
+        self.center_y = y
+
+    def collect(self, inventory):
+        inventory.add(self.gem_type, 1)
+        self.remove_from_sprite_lists()
+        return self.gem_type
+
+
+class Emerald(BaseItem):
+    def __init__(self, x, y):
+        super().__init__(EMERALD_IMAGE, GEM_SCALE, "emerald", x, y)
+
+
+class Sapphire(BaseItem):
+    def __init__(self, x, y):
+        super().__init__(SAPPHIRE_IMAGE, GEM_SCALE, "sapphire", x, y)
+
+
+class Ruby(BaseItem):
+    def __init__(self, x, y):
+        super().__init__(RUBY_IMAGE, GEM_SCALE, "ruby", x, y)
+
+
+class Key(BaseItem):
+    def __init__(self, x, y):
+        super().__init__(KEY_IMAGE, KEY_SCALE, "key", x, y)
