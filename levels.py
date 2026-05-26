@@ -56,7 +56,7 @@ class BaseLevel(arcade.View):
         self.door_trigger_list = None
         self.block_list = None
 
-        # Список стен для физики (отдельно, для динамического удаления)
+        # Список стен для физики
         self.all_walls = None
 
         # Состояние уровня
@@ -64,10 +64,11 @@ class BaseLevel(arcade.View):
         self.is_paused = False
         self.hint_timer = 0
         self.key_count = 0
-        self.has_emerald = False
         self.up_pressed = False
         self.down_pressed = False
         self.invincible_frames = 0
+        self.hurt_flash_timer = 0
+        self.hurt_freeze_timer = 0
         self.total_gems = 0
 
         # UI элементы
@@ -110,9 +111,13 @@ class BaseLevel(arcade.View):
             self.key_list.append(key)
 
         elif self.level_name == "ground":
-            self.key_list = arcade.SpriteList()
-            key = Key(KEY_SPAWN_GROUND[0], KEY_SPAWN_GROUND[1])
-            self.key_list.append(key)
+            # Ключ нужен только при первом проходе
+            if not self.game_manager.has_all_gems:
+                self.key_list = arcade.SpriteList()
+                key = Key(KEY_SPAWN_GROUND[0], KEY_SPAWN_GROUND[1])
+                self.key_list.append(key)
+            else:
+                self.key_list = None
 
     def load_map(self):
         """Загрузка карты из Tiled."""
@@ -156,15 +161,23 @@ class BaseLevel(arcade.View):
         return self.spawn_point
 
     def spawn_player(self):
-        """Создание игрока."""
+        if self.game_manager.player is None:
+            self.game_manager.player = Player(
+                self.spawn_point[0],
+                self.spawn_point[1],
+                PLAYER_SCALE,
+                PLAYER_HEALTH,
+                PLAYER_MOVEMENT_SPEED,
+            )
+        else:
+            # Спавним существующего игрока, просто меняем позицию
+            self.game_manager.player.center_x = self.spawn_point[0]
+            self.game_manager.player.center_y = self.spawn_point[1]
+            self.game_manager.player.change_x = 0
+            self.game_manager.player.change_y = 0
+
+        self.player = self.game_manager.player
         self.player_list = arcade.SpriteList()
-        self.player = Player(
-            self.spawn_point[0],
-            self.spawn_point[1],
-            PLAYER_SCALE,
-            PLAYER_HEALTH,
-            PLAYER_MOVEMENT_SPEED,
-        )
         self.player_list.append(self.player)
 
     def setup_physics(self):
@@ -265,14 +278,6 @@ class BaseLevel(arcade.View):
             batch=self.batch,
         )
 
-    def get_goal_text(self):
-        """Возвращает текст цели уровня."""
-        if self.level_name == "sky":
-            if not self.game_manager.has_all_gems:
-                return "Цель: найти драгоценности - 3"
-            return "Цель: найти портал"
-        return "Цель: найти портал"
-
     def on_draw(self):
         """Отрисовка уровня."""
         self.clear()
@@ -324,14 +329,7 @@ class BaseLevel(arcade.View):
                 else arcade.color.GRAY
             )
 
-        gems_collected = (
-            self.player.inventory.total_gems()
-            if hasattr(self.player, "inventory")
-            else 0
-        )
-        self.ui_left_text.text = (
-            f"Ключи: {self.key_count} | Драгоценности: {gems_collected}"
-        )
+        self.update_ui_left_text()
 
         if self.hint_timer > 0:
             self.hint_timer -= 1
@@ -389,6 +387,8 @@ class BaseLevel(arcade.View):
 
         self.check_hazards()
 
+        self.update_hurt_effect()
+
     def update_camera(self):
         """Плавное обновление камеры с dead zone."""
         if not self.player:
@@ -441,7 +441,15 @@ class BaseLevel(arcade.View):
             self.level_name == "ground"
             and self.player.inventory.total_gems() >= 3
         ):
-            self.game_manager.check_victory("ground")
+            if (
+                hasattr(self.game_manager, "on_win_callback")
+                and self.game_manager.on_win_callback
+            ):
+                self.game_manager.check_victory("ground")
+            else:
+                # Если запуск был через game_engine.py
+                print("[DEBUG] ПОБЕДА! (тестовый режим)")
+                arcade.close_window()
             return
 
         # Для остальных случаев -> смена уровня
@@ -502,7 +510,6 @@ class BaseLevel(arcade.View):
                 self.player.change_y = 0
 
     def check_hazards(self):
-        """Проверка столкновения с опасностями."""
         if self.invincible_frames > 0:
             self.invincible_frames -= 1
             return
@@ -527,8 +534,13 @@ class BaseLevel(arcade.View):
                     arcade.close_window()
                 return
 
-            self.respawn_player()
-            self.invincible_frames = 60
+            # Замораживаем игрока и запускаем мигание
+            self.hurt_freeze_timer = 30  # заморозка на 0.5 сек (при 60 FPS)
+            self.hurt_flash_timer = 60  # мигание на 1 сек
+            self.invincible_frames = 60  # неуязвимость на 1 сек
+
+            # Сохраняем позицию для телепортации
+            self.death_position = (self.player.center_x, self.player.center_y)
 
     def respawn_player(self):
         """Воскрешение игрока в точке спавна."""
@@ -536,6 +548,9 @@ class BaseLevel(arcade.View):
         self.player.center_y = self.spawn_point[1]
         self.player.change_x = 0
         self.player.change_y = 0
+        self.player.alpha = 255
+        self.hurt_flash_timer = 0
+        self.hurt_freeze_timer = 0
 
     def check_door(self):
         """Проверка касания триггера перед дверью."""
@@ -581,6 +596,81 @@ class BaseLevel(arcade.View):
                 self.show_portal_hint("Нужен ключ!")
             elif not self.game_manager.has_all_gems:
                 self.show_portal_hint("Нужны все драгоценности!")
+
+    def update_hurt_effect(self):
+        """Обновление эффекта получения урона (заморозка и мигание)"""
+        if self.hurt_freeze_timer > 0:
+            # Игрок заморожен
+            self.player.change_x = 0
+            self.player.change_y = 0
+            self.hurt_freeze_timer -= 1
+
+            if self.hurt_freeze_timer == 0:
+                # Телепортируем на спавн
+                self.respawn_player()
+
+        if self.hurt_flash_timer > 0:
+            # Мигание (меняем прозрачность или видимость)
+            self.hurt_flash_timer -= 1
+            if self.hurt_flash_timer % 10 < 5:
+                self.player.alpha = 128  # полупрозрачный
+            else:
+                self.player.alpha = 255  # нормальный
+        else:
+            self.player.alpha = 255
+
+    def get_goal_text(self):
+        if self.level_name == "sky":
+            if not self.game_manager.has_all_gems:
+                return "Цель: найти драгоценности!"
+            elif not self.door_active:
+                return "Цель: войти в портал"
+            elif self.key_count == 0:
+                return "Цель: найти ключ"
+            else:
+                return "Цель: открыть дверь"
+
+        elif self.level_name == "dungeon":
+            if not self.door_active:
+                return "Цель: войти в портал"
+            elif self.key_count == 0:
+                return "Цель: найти ключ"
+            else:
+                return "Цель: открыть дверь"
+
+        elif self.level_name == "ground":
+            if self.game_manager.has_all_gems:
+                return "Цель: вернуться живым!"  # после боя с боссом
+            elif not self.door_active:
+                return "Цель: войти в портал"
+            elif self.key_count == 0:
+                return "Цель: найти ключ"
+            else:
+                return "Цель: открыть дверь"
+
+        # Запасной вариант
+        return "Цель: продолжить путь"
+
+    def update_ui_left_text(self):
+        """Обновляет текст в левом нижнем углу в зависимости от уровня"""
+        if self.level_name == "sky":
+            gems = self.player.inventory.total_gems()
+            keys = self.player.inventory.get_count("key")
+            self.ui_left_text.text = (
+                f"Ключи: {keys} | Драгоценности: {gems} из 3"
+            )
+
+        elif self.level_name == "dungeon":
+            keys = self.player.inventory.get_count("key")
+            self.ui_left_text.text = f"Ключи: {keys}"
+
+        elif self.level_name == "ground":
+            if self.game_manager.has_all_gems:
+                gems = self.player.inventory.total_gems()
+                self.ui_left_text.text = f"Драгоценности: {gems}"
+            else:
+                keys = self.player.inventory.get_count("key")
+                self.ui_left_text.text = f"Ключи: {keys}"
 
 
 class GroundLevel(BaseLevel):

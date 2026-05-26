@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="12" nextobjectid="1">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="14" nextobjectid="2">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFgwlU00BPHRB3QjEDEhsd1yPpqcGitpZIM7vI8MMoIB/gin9y0hIpdjUDcSsSuwUJt+JR10pAvgULRlY/CmgPSEk7xKglVg2usokUDAOk6AEAh5Upsw==
+   eJxjYBgFgwlUU1lPJxrGJgbD9Uj6arCorUWSr8NjZhcZfhgF5ANc8U9OWiLFrmYgbkVityDhVgLqCMmjY2T1o4D2gJS0Q4xaYtXgKptIwTBAih4AgCIqRg==
   </data>
  </layer>
  <layer id="5" name="ladders" width="30" height="15">
@@ -19,11 +19,6 @@
  <layer id="7" name="decoration" width="30" height="15">
   <data encoding="base64" compression="zlib">
    eJxjYBhYMIEEtf1kmE+OHnoCfxqrHwWoADk9YEt7hOSHOiAl/YymNVSAXpYQmz6wlUGE9A7WcouaaWIwpS8A+W8IlA==
-  </data>
- </layer>
- <layer id="8" name="door" width="30" height="15">
-  <data encoding="base64" compression="zlib">
-   eJxjYBgFwxVYAXEHEHcOtENGwSgYBaNgEAMAsN4BTA==
   </data>
  </layer>
  <layer id="9" name="hazards" width="30" height="15">
@@ -46,4 +41,17 @@
    eJxjYBgF9AApA+2AUTAKRsEoGAVYAQA5pgBl
   </data>
  </layer>
+ <layer id="8" name="door" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBgFtAayA2SvzADZOwpGwSgYBUMJAAA7ewA6
+  </data>
+ </layer>
+ <objectgroup id="13" name="door_trigger">
+  <object id="1" gid="58" x="3648" y="512" width="192" height="192">
+   <properties>
+    <property name="action" value="open_door"/>
+    <property name="type" value="trigger"/>
+   </properties>
+  </object>
+ </objectgroup>
 </map>

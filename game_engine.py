@@ -11,6 +11,7 @@ class MyGame:
     def __init__(self, window: arcade.Window):
         self.window = window
         self.has_all_gems = False
+        self.player = None
 
         self.level_registry = {}
         self.current_view = None
