@@ -4,6 +4,7 @@
 # ├── DungeonLevel (уровень "Подземелье")
 # └── SkyLevel (уровень "Небо")
 
+
 import arcade
 from pyglet.graphics import Batch
 
@@ -12,6 +13,8 @@ from classes import *
 
 
 class BaseLevel(arcade.View):
+    """Базовый класс для всех уровней игры."""
+
     def __init__(
         self,
         game_manager,
@@ -29,14 +32,17 @@ class BaseLevel(arcade.View):
 
         self.batch = Batch()
 
+        # Списки спрайтов
         self.tile_map = None
         self.player = None
         self.player_list = None
         self.physics_engine = None
 
+        # Камеры
         self.world_camera = None
         self.gui_camera = None
 
+        # Списки объектов уровня
         self.platform_list = None
         self.decoration_list = None
         self.hazards_list = None
@@ -48,17 +54,33 @@ class BaseLevel(arcade.View):
         self.key_list = None
         self.door_list = None
         self.door_trigger_list = None
-        self.door_active = True
         self.block_list = None
 
+        # Список стен для физики (отдельно, для динамического удаления)
+        self.all_walls = None
+
+        # Состояние уровня
+        self.door_active = True
         self.is_paused = False
+        self.hint_timer = 0
         self.key_count = 0
         self.has_emerald = False
         self.up_pressed = False
         self.down_pressed = False
         self.invincible_frames = 0
+        self.total_gems = 0
+
+        # UI элементы
+        self.ui_level_difficulty_text = None
+        self.ui_left_text = None
+        self.ui_right_text = None
+        self.portal_hint_text = None
+        self.ui_coin_text = None
+        self.heart_texts = None
+        self.test_text = None
 
     def setup(self):
+        """Инициализация уровня."""
         self.load_map()
         self.spawn_player()
         self.setup_physics()
@@ -77,7 +99,6 @@ class BaseLevel(arcade.View):
             self.gem_list.append(emerald)
             self.gem_list.append(sapphire)
             self.gem_list.append(ruby)
-
             self.total_gems = 3
 
             key = Key(KEY_SPAWN_SKY[0], KEY_SPAWN_SKY[1])
@@ -88,7 +109,13 @@ class BaseLevel(arcade.View):
             key = Key(KEY_SPAWN_DUNGEON[0], KEY_SPAWN_DUNGEON[1])
             self.key_list.append(key)
 
+        elif self.level_name == "ground":
+            self.key_list = arcade.SpriteList()
+            key = Key(KEY_SPAWN_GROUND[0], KEY_SPAWN_GROUND[1])
+            self.key_list.append(key)
+
     def load_map(self):
+        """Загрузка карты из Tiled."""
         self.tile_map = arcade.load_tilemap(self.map_name, TILE_SCALE)
 
         self.platform_list = self.tile_map.sprite_lists.get("platform")
@@ -104,11 +131,10 @@ class BaseLevel(arcade.View):
                     "entry_exitA"
                 )
                 self.block_list = self.tile_map.sprite_lists.get("blockA")
-
+                self.door_list = self.tile_map.sprite_lists.get("door")
                 self.door_trigger_list = self.tile_map.sprite_lists.get(
                     "door_trigger"
                 )
-                self.door_list = self.tile_map.sprite_lists.get("door")
             else:
                 self.door_list = None
                 self.start_list = self.tile_map.sprite_lists.get("startB")
@@ -120,16 +146,17 @@ class BaseLevel(arcade.View):
             self.start_list = self.tile_map.sprite_lists.get("startA")
             self.entry_exit_list = self.tile_map.sprite_lists.get("entry_exit")
             self.block_list = self.tile_map.sprite_lists.get("blockA")
-
             self.door_trigger_list = self.tile_map.sprite_lists.get(
                 "door_trigger"
             )
             self.door_list = self.tile_map.sprite_lists.get("door")
 
     def get_next_spawn_point(self):
+        """Возвращает точку спавна для следующего уровня."""
         return self.spawn_point
 
     def spawn_player(self):
+        """Создание игрока."""
         self.player_list = arcade.SpriteList()
         self.player = Player(
             self.spawn_point[0],
@@ -141,29 +168,34 @@ class BaseLevel(arcade.View):
         self.player_list.append(self.player)
 
     def setup_physics(self):
-        all_walls = arcade.SpriteList()
+        """Настройка физического движка."""
+        self.all_walls = arcade.SpriteList()
         for layer in (
             self.platform_list,
             self.collision_list,
-            self.door_list,
             self.block_list,
         ):
             if layer:
-                all_walls.extend(layer)
+                self.all_walls.extend(layer)
+
+        if self.door_active:
+            self.all_walls.extend(self.door_list)
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(
             self.player,
-            all_walls,
+            self.all_walls,
             gravity_constant=GRAVITY,
             ladders=self.ladder_list,
         )
 
     def setup_cameras(self):
+        """Настройка камер."""
         self.world_camera = arcade.Camera2D()
         self.gui_camera = arcade.Camera2D()
         self.world_camera.position = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
 
     def setup_gui(self):
+        """Создание UI элементов."""
         self.ui_level_difficulty_text = arcade.Text(
             self.game_manager.get_level_difficulty_text(),
             SCREEN_WIDTH // 2,
@@ -234,6 +266,7 @@ class BaseLevel(arcade.View):
         )
 
     def get_goal_text(self):
+        """Возвращает текст цели уровня."""
         if self.level_name == "sky":
             if not self.game_manager.has_all_gems:
                 return "Цель: найти драгоценности - 3"
@@ -241,6 +274,7 @@ class BaseLevel(arcade.View):
         return "Цель: найти портал"
 
     def on_draw(self):
+        """Отрисовка уровня."""
         self.clear()
         self.world_camera.use()
 
@@ -269,26 +303,40 @@ class BaseLevel(arcade.View):
         self.draw_gui()
 
     def draw_gui(self):
+        """Отрисовка GUI."""
         self.batch.draw()
 
     def on_update(self, delta_time):
+        """Обновление состояния уровня."""
         if self.is_paused:
             return
 
         self.ui_coin_text.text = f"Монеты: {self.game_manager.coin_count}"
+        self.ui_level_difficulty_text.text = (
+            self.game_manager.get_level_difficulty_text()
+        )
+        self.ui_right_text.text = self.get_goal_text()
 
-        for i in range(len(self.heart_texts)):
-            self.heart_texts[i].color = (
+        for i, heart in enumerate(self.heart_texts):
+            heart.color = (
                 arcade.color.RED
                 if i < self.game_manager.lives
                 else arcade.color.GRAY
             )
 
-        self.ui_level_difficulty_text.text = (
-            self.game_manager.get_level_difficulty_text()
+        gems_collected = (
+            self.player.inventory.total_gems()
+            if hasattr(self.player, "inventory")
+            else 0
         )
-        self.ui_left_text.text = f"Ключи: {self.key_count}"
-        self.ui_right_text.text = self.get_goal_text()
+        self.ui_left_text.text = (
+            f"Ключи: {self.key_count} | Драгоценности: {gems_collected}"
+        )
+
+        if self.hint_timer > 0:
+            self.hint_timer -= 1
+            if self.hint_timer == 0:
+                self.clear_portal_hint()
 
         if self.physics_engine.is_on_ladder():
             if self.up_pressed and not self.down_pressed:
@@ -329,20 +377,6 @@ class BaseLevel(arcade.View):
                     self.game_manager.has_all_gems = True
                     print("[DEBUG] Все драгоценности собраны!")
 
-        self.check_hazards()
-
-        for i, heart in enumerate(self.heart_texts):
-            heart.color = (
-                arcade.color.RED
-                if i < self.game_manager.lives
-                else arcade.color.GRAY
-            )
-
-        self.ui_left_text.text = (
-            f"Ключи: {self.key_count} | "
-            f"Драгоценности: {self.player.inventory.total_gems()}"
-        )
-
         if self.key_list:
             key_hit = arcade.check_for_collision_with_list(
                 self.player, self.key_list
@@ -353,7 +387,10 @@ class BaseLevel(arcade.View):
                 self.key_count += 1
                 print(f"[DEBUG] Подобран ключ! Всего ключей: {self.key_count}")
 
+        self.check_hazards()
+
     def update_camera(self):
+        """Плавное обновление камеры с dead zone."""
         if not self.player:
             return
 
@@ -387,41 +424,46 @@ class BaseLevel(arcade.View):
         self.world_camera.position = (smooth_x, smooth_y)
 
     def check_portal(self):
+        """Проверка столкновения с порталом/выходом."""
         if not self.entry_exit_list:
             return
 
         if arcade.check_for_collision_with_list(
             self.player, self.entry_exit_list
         ):
-            if self.door_active:
-                print("[DEBUG] Нужен ключ, чтобы покинуть уровень!")
-                self.show_portal_hint("Нужен ключ!")
-                return
-
             self.on_enter_portal()
 
     def on_enter_portal(self):
-        if self.level_name == "ground":
-            if self.player.inventory.total_gems() >= 3:
-                self.game_manager.check_victory("ground")
-            else:
-                print("[DEBUG] Не все камни собраны!")
+        """Обработка входа в портал."""
+
+        # Если это ground и камни собраны -> победа!
+        if (
+            self.level_name == "ground"
+            and self.player.inventory.total_gems() >= 3
+        ):
+            self.game_manager.check_victory("ground")
             return
 
+        # Для остальных случаев -> смена уровня
         self.game_manager.change_level(self.next_level_name)
 
     def show_portal_hint(self, message: str):
+        """Показать подсказку у портала."""
         if self.portal_hint_text:
             self.portal_hint_text.text = message
+            self.hint_timer = 120
 
     def clear_portal_hint(self):
+        """Очистить подсказку у портала."""
         if self.portal_hint_text:
             self.portal_hint_text.text = ""
 
     def reset_level(self):
+        """Сброс и пересоздание уровня."""
         self.setup()
 
     def on_key_press(self, key, modifiers):
+        """Обработка нажатия клавиш."""
         if key == arcade.key.LEFT:
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT:
@@ -447,6 +489,7 @@ class BaseLevel(arcade.View):
             print("[DEBUG] L pressed — поражение")
 
     def on_key_release(self, key, modifiers):
+        """Обработка отпускания клавиш."""
         if key in (arcade.key.LEFT, arcade.key.RIGHT):
             self.player.change_x = 0
         elif key == arcade.key.UP:
@@ -459,6 +502,7 @@ class BaseLevel(arcade.View):
                 self.player.change_y = 0
 
     def check_hazards(self):
+        """Проверка столкновения с опасностями."""
         if self.invincible_frames > 0:
             self.invincible_frames -= 1
             return
@@ -487,7 +531,7 @@ class BaseLevel(arcade.View):
             self.invincible_frames = 60
 
     def respawn_player(self):
-        """Воскрешает игрока в точке спавна."""
+        """Воскрешение игрока в точке спавна."""
         self.player.center_x = self.spawn_point[0]
         self.player.center_y = self.spawn_point[1]
         self.player.change_x = 0
@@ -504,52 +548,50 @@ class BaseLevel(arcade.View):
         if not hit_list:
             return
 
-        print("[DEBUG] КАСАНИЕ ТРИГГЕРА ДВЕРИ! (Игрок нажал на кнопку)")
+        trigger = hit_list[0]
+        if (
+            trigger.properties.get("type") != "trigger"
+            or trigger.properties.get("action") != "open_door"
+        ):
+            return
 
-        if self.key_count > 0 and self.game_manager.has_all_gems:
+        can_open = self.key_count > 0
+        if self.level_name == "sky":
+            can_open = can_open and self.game_manager.has_all_gems
+
+        if can_open:
             print("[DEBUG] Дверь открыта! Ключ использован.")
 
             self.key_count -= 1
-            self.player.inventory.discard("key", 1)
+            if hasattr(self.player, "inventory"):
+                self.player.inventory.discard("key", 1)
 
-            for door in self.door_list:
-                door.remove_from_sprite_lists()
-
+            # Удаляем дверь правильно
+            if self.door_list:
+                for tile in self.door_list[:]:
+                    tile.remove_from_sprite_lists()
             self.door_list = None
+
             self.door_active = False
 
-            all_walls = arcade.SpriteList()
-            for layer in (
-                self.platform_list,
-                self.collision_list,
-                self.block_list,
-            ):
-                if layer:
-                    all_walls.extend(layer)
+            # print("[DEBUG] Дверь удалена")
 
-            self.physics_engine = arcade.PhysicsEnginePlatformer(
-                self.player,
-                all_walls,
-                gravity_constant=GRAVITY,
-                ladders=self.ladder_list,
-            )
-
-            print("[DEBUG] Физика обновлена, дверь удалена")
         else:
             if self.key_count == 0:
-                print("[DEBUG] Нужен ключ для открытия двери!")
                 self.show_portal_hint("Нужен ключ!")
             elif not self.game_manager.has_all_gems:
-                print("[DEBUG] Нужны все драгоценности!")
                 self.show_portal_hint("Нужны все драгоценности!")
 
 
 class GroundLevel(BaseLevel):
+    """Уровень "Земля"."""
+
     def __init__(self, game_manager):
-        if game_manager.has_all_gems:
-            spawn_point = PLAYER_SPAWN_GROUND_B
-        else:
-            spawn_point = PLAYER_SPAWN_GROUND_A
+        spawn_point = (
+            PLAYER_SPAWN_GROUND_B
+            if game_manager.has_all_gems
+            else PLAYER_SPAWN_GROUND_A
+        )
         super().__init__(
             game_manager=game_manager,
             map_name=MAP_PATH_GROUND,
@@ -557,9 +599,13 @@ class GroundLevel(BaseLevel):
             next_level_name="dungeon",
             spawn_point=spawn_point,
         )
+        if game_manager.has_all_gems:
+            self.door_active = False  # для второго захода
 
 
 class DungeonLevel(BaseLevel):
+    """Уровень "Подземелье"."""
+
     def __init__(self, game_manager):
         super().__init__(
             game_manager=game_manager,
@@ -571,6 +617,8 @@ class DungeonLevel(BaseLevel):
 
 
 class SkyLevel(BaseLevel):
+    """Уровень "Небо"."""
+
     def __init__(self, game_manager):
         super().__init__(
             game_manager=game_manager,
