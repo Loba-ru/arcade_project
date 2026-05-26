@@ -3,10 +3,8 @@
 # Иерархия классов Существ:
 # Entity (базовый класс)
 # ├── Player (игрок)
+# |   └── AnimatedPlayer (игрок с анимацией)
 # └── Enemy (враг)
-#
-# Вспомогательный класс для Player:
-# Inventory (Инвентарь игрока)
 #
 # Иерархия классов внутриигровых предметов:
 # BaseItem (базовый класс)
@@ -14,6 +12,11 @@
 # ├── Sapphire (Сапфир)
 # ├── Ruby (Рубин)
 # └── Key (Ключ)
+#
+# Вспомогательные классы:
+# Inventory (инвентарь игрока)
+# DustParticle (для эффекта приземления)
+
 
 import arcade
 import random
@@ -91,6 +94,119 @@ class Player(Entity):
     def update(self, delta_time: float):
         self.center_x += self.change_x * self.speed * delta_time
         self.center_y += self.change_y * self.speed * delta_time
+
+
+class AnimatedPlayer(Player):
+    """Игрок с анимацией из атласа"""
+
+    def __init__(self, x: float, y: float, scale=1.0, health=100, speed=5.0):
+        super().__init__(x, y, scale, health, speed)
+
+        # Анимация
+        self.state = "idle"  # idle, walk, jump, fall, climb
+        self.textures = {}  # словарь {"idle": [текстуры], ...}
+        self.current_texture_index = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.12  # секунд на кадр
+        self.last_direction = 1  # 1 = вправо, -1 = влево
+
+        # Загружаем текстуры
+        self.load_textures()
+
+        # Движок
+        self.physics_engine = None
+
+    def load_textures(self):
+        """Загружает текстуры из спрайтшита femaleAdventurer_sheet.png"""
+        try:
+            file_name = "resources/images/entities/femaleAdventurer_sheet.png"
+            full_sheet = arcade.load_texture(file_name)
+
+            data = {
+                "idle": [(0, 0, 96, 128)],
+                "walk": [(i * 96, 512, 96, 128) for i in range(8)],
+                "jump": [(96, 0, 96, 128)],
+                "fall": [(192, 0, 96, 128)],
+                "climb": [(480, 0, 96, 128), (576, 0, 96, 128)],
+            }
+
+            self.textures = {}
+            for state, regions in data.items():
+                self.textures[state] = []
+                for r in regions:
+                    sub_tex = full_sheet.crop(r[0], r[1], r[2], r[3])
+                    self.textures[state].append(sub_tex)
+
+            if self.textures.get("idle"):
+                self.texture = self.textures["idle"][0]
+
+        except Exception as e:
+            print(f"[WARNING] Не удалось загрузить текстуры: {e}")
+
+    def update_state(self):
+        """Определяет текущее состояние игрока по физике"""
+        # Лестница — самый высокий приоритет
+        if self.physics_engine and self.physics_engine.is_on_ladder():
+            # Если на лестнице и не двигается вверх/вниз — стоим (idle)
+            if abs(self.change_y) > 0:
+                self.state = "climb"
+            else:
+                self.state = "idle"
+            return
+
+        # Падение или прыжок (по вертикальной скорости)
+        if self.change_y > 0:
+            self.state = "jump"
+            return
+        elif self.change_y < 0:
+            self.state = "fall"
+            return
+
+        # Ходьба или покой
+        if abs(self.change_x) > 0:
+            self.state = "walk"
+        else:
+            self.state = "idle"
+
+    def update_animation(self, delta_time):
+        """Обновляет анимацию в зависимости от состояния"""
+        # Обновляем состояние
+        self.update_state()
+
+        # Получаем список текстур для текущего состояния
+        textures = self.textures.get(self.state, self.textures.get("idle", []))
+        if not textures:
+            return
+
+        # Защита от выхода за границы списка
+        if self.current_texture_index >= len(textures):
+            self.current_texture_index = 0
+
+        # Обновляем таймер
+        self.animation_timer += delta_time
+
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_texture_index = (
+                self.current_texture_index + 1
+            ) % len(textures)
+
+        # Устанавливаем текстуру
+        base_texture = textures[self.current_texture_index]
+
+        # Отражение по горизонтали (направление движения)
+        if self.change_x > 0:
+            self.last_direction = 1
+            self.texture = base_texture
+        elif self.change_x < 0:
+            self.last_direction = -1
+            self.texture = base_texture.flip_horizontally()
+        else:
+            # Стоим на месте — используем последнее направление
+            if self.last_direction == -1:
+                self.texture = base_texture.flip_horizontally()
+            else:
+                self.texture = base_texture
 
 
 class Enemy(Entity, ABC):
@@ -179,3 +295,37 @@ class Ruby(BaseItem):
 class Key(BaseItem):
     def __init__(self, x, y):
         super().__init__(KEY_IMAGE, KEY_SCALE, "key", x, y)
+
+
+class DustParticle(arcade.SpriteCircle):
+    """Частица пыли для эффекта приземления"""
+
+    def __init__(self, x, y):
+        color = random.choice(
+            [
+                (200, 200, 200, 200),
+                (180, 180, 180, 200),
+                (220, 220, 220, 200),
+                (190, 170, 150, 200),
+            ]
+        )
+        size = random.randint(3, 8)
+        super().__init__(size, color)
+        self.center_x = x
+        self.center_y = y
+        self.change_x = random.uniform(-1.5, 1.5)
+        self.change_y = random.uniform(0, 2)
+        self.alpha = 200
+        self.lifetime = random.uniform(0.5, 1.2)
+        self.time_alive = 0
+
+    def update(self, delta_time):
+        self.center_x += self.change_x
+        self.center_y += self.change_y
+        self.change_x *= 0.95
+        self.change_y *= 0.95
+        self.alpha -= 2
+        self.time_alive += delta_time
+
+        if self.time_alive >= self.lifetime or self.alpha <= 0:
+            self.remove_from_sprite_lists()

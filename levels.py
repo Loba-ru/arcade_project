@@ -70,6 +70,8 @@ class BaseLevel(arcade.View):
         self.hurt_flash_timer = 0
         self.hurt_freeze_timer = 0
         self.total_gems = 0
+        self.dust_particles = None
+        self.was_jumping = False
 
         # UI элементы
         self.ui_level_difficulty_text = None
@@ -119,6 +121,8 @@ class BaseLevel(arcade.View):
             else:
                 self.key_list = None
 
+        self.dust_particles = arcade.SpriteList()
+
     def load_map(self):
         """Загрузка карты из Tiled."""
         self.tile_map = arcade.load_tilemap(self.map_name, TILE_SCALE)
@@ -162,7 +166,7 @@ class BaseLevel(arcade.View):
 
     def spawn_player(self):
         if self.game_manager.player is None:
-            self.game_manager.player = Player(
+            self.game_manager.player = AnimatedPlayer(
                 self.spawn_point[0],
                 self.spawn_point[1],
                 PLAYER_SCALE,
@@ -200,6 +204,8 @@ class BaseLevel(arcade.View):
             gravity_constant=GRAVITY,
             ladders=self.ladder_list,
         )
+
+        self.game_manager.player.physics_engine = self.physics_engine
 
     def setup_cameras(self):
         """Настройка камер."""
@@ -304,6 +310,9 @@ class BaseLevel(arcade.View):
         if self.key_list:
             self.key_list.draw()
 
+        if self.dust_particles:
+            self.dust_particles.draw()
+
         self.gui_camera.use()
         self.draw_gui()
 
@@ -348,6 +357,15 @@ class BaseLevel(arcade.View):
                 self.player.change_y = 0
 
         self.physics_engine.update()
+
+        # Проверка приземления
+        on_ground = self.physics_engine.can_jump()
+        if self.was_jumping and on_ground:
+            self.create_dust_effect()
+            self.was_jumping = False
+        else:
+            self.was_jumping = not on_ground
+        self.dust_particles.update()
 
         self.player.is_walking = (
             self.player.change_x != 0
@@ -671,6 +689,12 @@ class BaseLevel(arcade.View):
             else:
                 keys = self.player.inventory.get_count("key")
                 self.ui_left_text.text = f"Ключи: {keys}"
+
+    def create_dust_effect(self):
+        """Создаёт эффект пыли при приземлении"""
+        for _ in range(15):
+            particle = DustParticle(self.player.center_x, self.player.bottom)
+            self.dust_particles.append(particle)
 
 
 class GroundLevel(BaseLevel):
