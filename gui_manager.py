@@ -55,7 +55,6 @@ class GUIManager:
     def show_menu_gui(self, on_new_game_callback):
         """Показывает GUI для меню (кнопка 'Новая игра')"""
 
-        print("[GUI] show_menu_gui вызван")
         self.manager.clear()
 
         anchor = UIAnchorLayout()
@@ -75,8 +74,6 @@ class GUIManager:
 
         self.manager.add(anchor)
         self.current_layout = anchor
-
-        print(f"[GUI] Кнопка создана, добавлена в layout")
 
     def hide_gui(self):
         """Скрывает GUI"""

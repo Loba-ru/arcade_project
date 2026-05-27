@@ -5,13 +5,17 @@
 # ├── Player (игрок)
 # |   └── AnimatedPlayer (игрок с анимацией)
 # └── Enemy (враг)
-#
+#     ├── EasyEnemy
+#     ├── MediumEnemy
+#     └── HardEnemy
+
 # Иерархия классов внутриигровых предметов:
 # BaseItem (базовый класс)
 # ├── Emerald (Изумруд)
 # ├── Sapphire (Сапфир)
 # ├── Ruby (Рубин)
-# └── Key (Ключ)
+# ├── Key (Ключ)
+# └── Coin (Монета)
 #
 # Вспомогательные классы:
 # Inventory (инвентарь игрока)
@@ -75,7 +79,7 @@ class Entity(arcade.Sprite, ABC):
 
 
 class Player(Entity):
-    """Игрок с тремя жизнями-сердечками"""
+    """Игрок"""
 
     def __init__(self, x: float, y: float, scale=1.0, health=100, speed=5.0):
         super().__init__(
@@ -89,7 +93,28 @@ class Player(Entity):
         self.change_x = 0
         self.change_y = 0
         self.lives = 3
+        self.max_health = health
         self.inventory = Inventory()
+
+    def take_damage(self, amount: int):
+        """Получение урона (уменьшение здоровья)"""
+        self.health -= amount
+        if self.health <= 0:
+            self.health = 0
+
+    def lose_life(self):
+        """Потеря жизни (при health <= 0)"""
+        if self.lives > 0:
+            self.lives -= 1
+            self.health = self.max_health
+            if self.lives <= 0:
+                self.is_alive = False
+            return True
+        return False
+
+    def heal(self, amount: int):
+        """Лечение"""
+        self.health = min(self.max_health, self.health + amount)
 
     def update(self, delta_time: float):
         self.center_x += self.change_x * self.speed * delta_time
@@ -232,10 +257,28 @@ class EasyEnemy(Enemy):
             0.8,
             health=1,
             speed=50,
-            damage=10,
+            damage=20,
         )
         self.center_x = x
         self.center_y = y
+        self.change_x = 1.5  # скорость движения
+        self.boundary_left = x - 150  # левая граница
+        self.boundary_right = x + 150  # правая граница
+        self.direction = 1  # 1 = вправо, -1 = влево
+
+    def update(self, delta_time: float):
+        # Движение
+        self.center_x += self.change_x * self.direction
+
+        # Разворот у границ
+        if self.center_x >= self.boundary_right:
+            self.center_x = self.boundary_right
+            self.direction = -1
+            self.scale_x = -0.8  # отражение
+        elif self.center_x <= self.boundary_left:
+            self.center_x = self.boundary_left
+            self.direction = 1
+            self.scale_x = 0.8  # обратно
 
 
 class MediumEnemy(Enemy):
@@ -245,7 +288,7 @@ class MediumEnemy(Enemy):
             1.0,
             health=2,
             speed=80,
-            damage=20,
+            damage=35,
         )
         self.center_x = x
         self.center_y = y
@@ -258,7 +301,7 @@ class HardEnemy(Enemy):
             1.2,
             health=3,
             speed=120,
-            damage=30,
+            damage=50,
         )
         self.center_x = x
         self.center_y = y
@@ -295,6 +338,11 @@ class Ruby(BaseItem):
 class Key(BaseItem):
     def __init__(self, x, y):
         super().__init__(KEY_IMAGE, KEY_SCALE, "key", x, y)
+
+
+class Coin(BaseItem):
+    def __init__(self, x, y):
+        super().__init__(COIN_IMAGE, COIN_SCALE, "coin", x, y)
 
 
 class DustParticle(arcade.SpriteCircle):

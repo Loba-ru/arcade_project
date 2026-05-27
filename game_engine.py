@@ -5,6 +5,7 @@ import arcade
 
 from constants import *
 from levels import GroundLevel, DungeonLevel, SkyLevel
+from window_manager import WindowManager
 
 
 class MyGame:
@@ -29,7 +30,7 @@ class MyGame:
         self.register_level("sky", SkyLevel)
 
         self.coin_count = 0
-        self.lives = PLAYER_LIVES
+        self.lives = PLAYER_LIVES_DEFAULT
         self.difficulty = 1
 
     def register_level(self, name: str, level_class):
@@ -71,9 +72,6 @@ class MyGame:
         if self.lives > 0:
             self.lives -= 1
 
-    def set_difficulty(self, level):
-        self.difficulty = level
-
     def set_on_win_callback(self, callback):
         self.on_win_callback = callback
 
@@ -100,26 +98,73 @@ class MyGame:
             )
             self.on_win_callback()
 
+    def set_difficulty(self, difficulty_rank):
+        """Устанавливает сложность игры"""
+        self.difficulty = difficulty_rank
+        if self.difficulty == DIFFICULTY_EASY:
+            self.lives = PLAYER_LIVES_EASY
+        elif self.difficulty == DIFFICULTY_HARD:
+            self.lives = PLAYER_LIVES_HARD
+        else:  # по умолчанию
+            self.lives = PLAYER_LIVES_MEDIUM
+        print(
+            f"[DIFFICULTY] Сложность {self.difficulty}, жизней: {self.lives}"
+        )
 
-def center_window(window):
-    from pyglet.display import get_display
+    def set_difficulty_before_start(self, difficulty_rank):
+        """Устанавливает сложность игры ДО загрузки уровней"""
+        self.set_difficulty(difficulty_rank)
 
-    display = get_display()
-    screens = display.get_screens()
-    screen = screens[0]
+    def on_resize(self, width, height):
+        """Обновление камер при изменении размера окна"""
+        current_view = self.current_view
 
-    x = (screen.width - SCREEN_WIDTH) // 2
-    y = (screen.height - SCREEN_HEIGHT) // 2
-    window.set_location(x, y)
+        if current_view:
+            if hasattr(current_view, "setup_cameras"):
+                current_view.setup_cameras()
+
+            if hasattr(current_view, "resize_gui"):
+                current_view.resize_gui(width, height)
 
 
-def main():
-    window = arcade.Window(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    center_window(window)
-    game = MyGame(window)
-    game.start_game("ground")
-    arcade.run()
+class TestWindow(arcade.Window):
+    """Окно для тестового запуска игры (без StateManager)"""
+
+    def __init__(self):
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
+        self.window_manager = WindowManager(self)
+        self.window_manager.center_window()
+        self.window_manager.hide_cursor()
+
+        self.game_manager = MyGame(self)
+        self.game_manager.start_game("ground")
+
+    def on_resize(self, width, height):
+        """Обработка изменения размера окна (включая полноэкранный режим)"""
+        # super().on_resize(width, height)
+        self.game_manager.on_resize(width, height)
+
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.F11:
+            self.window_manager.toggle_fullscreen()
+        else:
+            if self.current_view:
+                self.current_view.on_key_press(key, modifiers)
+
+    def on_key_release(self, key, modifiers):
+        if self.current_view:
+            self.current_view.on_key_release(key, modifiers)
+
+    def on_draw(self):
+        self.clear()
+        if self.current_view:
+            self.current_view.on_draw()
+
+    def on_update(self, delta_time):
+        if self.current_view:
+            self.current_view.on_update(delta_time)
 
 
 if __name__ == "__main__":
-    main()
+    window = TestWindow()
+    arcade.run()

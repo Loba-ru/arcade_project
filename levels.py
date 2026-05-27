@@ -32,17 +32,20 @@ class BaseLevel(arcade.View):
 
         self.batch = Batch()
 
-        # Списки спрайтов
+        self.physics_engine = None
         self.tile_map = None
         self.player = None
+
+        # Списки спрайтов
         self.player_list = None
-        self.physics_engine = None
+        self.enemy_list = None
 
         # Камеры
         self.world_camera = None
         self.gui_camera = None
 
         # Списки объектов уровня
+        self.background_list = None
         self.platform_list = None
         self.decoration_list = None
         self.hazards_list = None
@@ -52,6 +55,7 @@ class BaseLevel(arcade.View):
         self.collision_list = None
         self.gem_list = None
         self.key_list = None
+        self.coin_list = None
         self.door_list = None
         self.door_trigger_list = None
         self.block_list = None
@@ -69,9 +73,13 @@ class BaseLevel(arcade.View):
         self.invincible_frames = 0
         self.hurt_flash_timer = 0
         self.hurt_freeze_timer = 0
+        self.pending_game_over = False
+        self.pending_respawn = False
         self.total_gems = 0
         self.dust_particles = None
         self.was_jumping = False
+        self.dead_zone_w = DEAD_ZONE_W
+        self.dead_zone_h = DEAD_ZONE_H
 
         # UI элементы
         self.ui_level_difficulty_text = None
@@ -84,12 +92,12 @@ class BaseLevel(arcade.View):
 
     def setup(self):
         """Инициализация уровня."""
+        self.set_background()
         self.load_map()
         self.spawn_player()
         self.setup_physics()
         self.setup_cameras()
         self.setup_gui()
-        arcade.set_background_color(arcade.color.SKY_BLUE)
 
         if self.level_name == "sky":
             self.gem_list = arcade.SpriteList()
@@ -120,6 +128,18 @@ class BaseLevel(arcade.View):
                 self.key_list.append(key)
             else:
                 self.key_list = None
+
+            # Создаём пробную монету
+            self.coin_list = arcade.SpriteList()
+            # Указываем ТЕСТОВЫЕ КООРДИНАТЫ (монеты будут перенесены в слой coins)
+            coin = Coin(704, 256)
+            self.coin_list.append(coin)
+
+            # Создаём пробного врага
+            self.enemy_list = arcade.SpriteList()
+            # Указываем ТЕСТОВЫЕ КООРДИНАТЫ (враги будут перенесены в слой enemys)
+            enemy = EasyEnemy(832, 178)
+            self.enemy_list.append(enemy)
 
         self.dust_particles = arcade.SpriteList()
 
@@ -174,11 +194,14 @@ class BaseLevel(arcade.View):
                 PLAYER_MOVEMENT_SPEED,
             )
         else:
-            # Спавним существующего игрока, просто меняем позицию
             self.game_manager.player.center_x = self.spawn_point[0]
             self.game_manager.player.center_y = self.spawn_point[1]
             self.game_manager.player.change_x = 0
             self.game_manager.player.change_y = 0
+
+        # Восстанавливаем здоровье и жизни при спавне
+        self.game_manager.player.health = PLAYER_HEALTH
+        self.game_manager.player.lives = self.game_manager.lives
 
         self.player = self.game_manager.player
         self.player_list = arcade.SpriteList()
@@ -209,9 +232,12 @@ class BaseLevel(arcade.View):
 
     def setup_cameras(self):
         """Настройка камер."""
+        width, height = self.window.get_size()  # динамические размеры
+        self.dead_zone_w = int(width * 0.35)
+        self.dead_zone_h = int(height * 0.35)
         self.world_camera = arcade.Camera2D()
         self.gui_camera = arcade.Camera2D()
-        self.world_camera.position = (SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2)
+        self.world_camera.position = (width / 2, height / 2)
 
     def setup_gui(self):
         """Создание UI элементов."""
@@ -262,7 +288,7 @@ class BaseLevel(arcade.View):
         )
 
         self.heart_texts = []
-        for i in range(self.game_manager.lives):
+        for i in range(self.player.lives):
             heart = arcade.Text(
                 "❤️",
                 30 + i * 40,
@@ -284,9 +310,57 @@ class BaseLevel(arcade.View):
             batch=self.batch,
         )
 
+    def resize_gui(self, width, height):
+        """Пересчёт позиций GUI при изменении размера окна"""
+        if self.ui_level_difficulty_text:
+            self.ui_level_difficulty_text.x = width // 2
+            self.ui_level_difficulty_text.y = height - 40
+
+        if self.ui_coin_text:
+            self.ui_coin_text.x = width - 20
+            self.ui_coin_text.y = height - 40
+
+        if self.ui_left_text:
+            self.ui_left_text.x = 20
+            self.ui_left_text.y = 20
+
+        if self.ui_right_text:
+            self.ui_right_text.x = width - 20
+            self.ui_right_text.y = 20
+
+        if self.portal_hint_text:
+            self.portal_hint_text.x = width // 2
+            self.portal_hint_text.y = height // 2
+
+        if self.heart_texts:
+            for i, heart in enumerate(self.heart_texts):
+                heart.x = 30 + i * 40
+                heart.y = height - 40
+
+        if self.test_text:
+            self.test_text.x = width // 2
+            self.test_text.y = 20
+
+        # Обновляем фон
+        if self.background_list:
+            for bg_sprite in self.background_list:
+                bg_sprite.center_x = width // 2
+                bg_sprite.center_y = height // 2
+
+                # Пересчитываем масштаб под новый размер окна
+                texture = bg_sprite.texture
+                if texture:
+                    scale_x = width / texture.width
+                    scale_y = height / texture.height
+                    bg_sprite.scale = max(scale_x, scale_y)
+
     def on_draw(self):
         """Отрисовка уровня."""
         self.clear()
+
+        if self.background_list:
+            self.background_list.draw()
+
         self.world_camera.use()
 
         for layer in (
@@ -309,6 +383,12 @@ class BaseLevel(arcade.View):
 
         if self.key_list:
             self.key_list.draw()
+
+        if self.coin_list:
+            self.coin_list.draw()
+
+        if self.enemy_list:
+            self.enemy_list.draw()
 
         if self.dust_particles:
             self.dust_particles.draw()
@@ -334,7 +414,7 @@ class BaseLevel(arcade.View):
         for i, heart in enumerate(self.heart_texts):
             heart.color = (
                 arcade.color.RED
-                if i < self.game_manager.lives
+                if i < self.player.lives
                 else arcade.color.GRAY
             )
 
@@ -365,7 +445,10 @@ class BaseLevel(arcade.View):
             self.was_jumping = False
         else:
             self.was_jumping = not on_ground
+
         self.dust_particles.update()
+
+        self.update_enemies()
 
         self.player.is_walking = (
             self.player.change_x != 0
@@ -403,9 +486,37 @@ class BaseLevel(arcade.View):
                 self.key_count += 1
                 print(f"[DEBUG] Подобран ключ! Всего ключей: {self.key_count}")
 
-        self.check_hazards()
+        # Сбор монет
+        if self.coin_list:
+            coins_hit = arcade.check_for_collision_with_list(
+                self.player, self.coin_list
+            )
+            for coin in coins_hit:
+                coin.collect(self.player.inventory)
+                self.game_manager.coin_count = self.player.inventory.get_count(
+                    "coin"
+                )
+                print(
+                    f"[COIN] Собрано монет: {self.player.inventory.get_count('coin')}"
+                )
 
+        self.check_hazards()
         self.update_hurt_effect()
+        # Проверяем, нужно ли завершить игру ПОСЛЕ того, как эффекты проигрались
+        if (
+            self.pending_game_over
+            and self.hurt_freeze_timer == 0
+            and self.hurt_flash_timer == 0
+        ):
+            if (
+                hasattr(self.game_manager, "on_lose_callback")
+                and self.game_manager.on_lose_callback
+            ):
+                self.game_manager.on_lose_callback()
+            else:
+                print("[DEBUG] Game Over! Выход...")
+                arcade.close_window()
+            self.pending_game_over = False
 
     def update_camera(self):
         """Плавное обновление камеры с dead zone."""
@@ -415,25 +526,26 @@ class BaseLevel(arcade.View):
         cam_x, cam_y = self.world_camera.position
         px, py = self.player.center_x, self.player.center_y
 
-        dz_left = cam_x - DEAD_ZONE_W // 2
-        dz_right = cam_x + DEAD_ZONE_W // 2
-        dz_bottom = cam_y - DEAD_ZONE_H // 2
-        dz_top = cam_y + DEAD_ZONE_H // 2
+        dz_left = cam_x - self.dead_zone_w // 2
+        dz_right = cam_x + self.dead_zone_w // 2
+        dz_bottom = cam_y - self.dead_zone_h // 2
+        dz_top = cam_y + self.dead_zone_h // 2
 
         target_x, target_y = cam_x, cam_y
 
         if px < dz_left:
-            target_x = px + DEAD_ZONE_W // 2
+            target_x = px + self.dead_zone_w // 2
         elif px > dz_right:
-            target_x = px - DEAD_ZONE_W // 2
+            target_x = px - self.dead_zone_w // 2
 
         if py < dz_bottom:
-            target_y = py + DEAD_ZONE_H // 2
+            target_y = py + self.dead_zone_h // 2
         elif py > dz_top:
-            target_y = py - DEAD_ZONE_H // 2
+            target_y = py - self.dead_zone_h // 2
 
         half_w = self.world_camera.viewport_width / 2
         half_h = self.world_camera.viewport_height / 2
+
         target_x = max(half_w, min(MAP_WIDTH - half_w, target_x))
         target_y = max(half_h, min(MAP_HEIGHT - half_h, target_y))
 
@@ -528,6 +640,7 @@ class BaseLevel(arcade.View):
                 self.player.change_y = 0
 
     def check_hazards(self):
+        """Проверка столкновения с ловушками (телепорт + потеря жизни)"""
         if self.invincible_frames > 0:
             self.invincible_frames -= 1
             return
@@ -538,27 +651,24 @@ class BaseLevel(arcade.View):
         if arcade.check_for_collision_with_list(
             self.player, self.hazards_list
         ):
-            self.game_manager.lives -= 1
-            print(f"[DEBUG] Урон! Осталось жизней: {self.game_manager.lives}")
-
-            if self.game_manager.lives <= 0:
-                if (
-                    hasattr(self.game_manager, "on_lose_callback")
-                    and self.game_manager.on_lose_callback
-                ):
-                    self.game_manager.on_lose_callback()
-                else:
-                    print("[DEBUG] Game Over! Выход...")
-                    arcade.close_window()
+            if not self.player.is_alive:
                 return
 
-            # Замораживаем игрока и запускаем мигание
-            self.hurt_freeze_timer = 30  # заморозка на 0.5 сек (при 60 FPS)
-            self.hurt_flash_timer = 60  # мигание на 1 сек
-            self.invincible_frames = 60  # неуязвимость на 1 сек
+            life_lost = self.player.lose_life()
+            if life_lost:
+                print(
+                    f"[DEBUG] Урон от ловушки! Осталось жизней: {self.player.lives}"
+                )
+                self.game_manager.lives = self.player.lives  # синхронизация
 
-            # Сохраняем позицию для телепортации
-            self.death_position = (self.player.center_x, self.player.center_y)
+                # Замораживаем и запоминаем телепорт
+                self.hurt_freeze_timer = 30
+                self.hurt_flash_timer = 60
+                self.invincible_frames = 60
+                self.pending_respawn = True
+
+                if not self.player.is_alive:
+                    self.pending_game_over = True
 
     def respawn_player(self):
         """Воскрешение игрока в точке спавна."""
@@ -617,23 +727,23 @@ class BaseLevel(arcade.View):
 
     def update_hurt_effect(self):
         """Обновление эффекта получения урона (заморозка и мигание)"""
+        # Заморозка ТОЛЬКО для ловушек
         if self.hurt_freeze_timer > 0:
-            # Игрок заморожен
             self.player.change_x = 0
             self.player.change_y = 0
             self.hurt_freeze_timer -= 1
 
-            if self.hurt_freeze_timer == 0:
-                # Телепортируем на спавн
+            if self.hurt_freeze_timer == 0 and self.pending_respawn:
                 self.respawn_player()
+                self.pending_respawn = False
 
+        # Мигание для всех
         if self.hurt_flash_timer > 0:
-            # Мигание (меняем прозрачность или видимость)
             self.hurt_flash_timer -= 1
             if self.hurt_flash_timer % 10 < 5:
-                self.player.alpha = 128  # полупрозрачный
+                self.player.alpha = 128
             else:
-                self.player.alpha = 255  # нормальный
+                self.player.alpha = 255
         else:
             self.player.alpha = 255
 
@@ -696,6 +806,89 @@ class BaseLevel(arcade.View):
             particle = DustParticle(self.player.center_x, self.player.bottom)
             self.dust_particles.append(particle)
 
+    def set_background(self, texture_path=None, color=None):
+        """Установка фона уровня (текстура или цвет)"""
+        if texture_path:
+            try:
+                # Создаём SpriteList для фона
+                self.background_list = arcade.SpriteList()
+
+                # Загружаем текстуру
+                texture = arcade.load_texture(texture_path)
+
+                # Создаём спрайт
+                bg_sprite = arcade.Sprite(texture)
+                bg_sprite.center_x = SCREEN_WIDTH / 2
+                bg_sprite.center_y = SCREEN_HEIGHT / 2
+
+                # Масштабируем на весь экран
+                scale_x = SCREEN_WIDTH / texture.width
+                scale_y = SCREEN_HEIGHT / texture.height
+                bg_sprite.scale = max(scale_x, scale_y)
+
+                # Добавляем в список
+                self.background_list.append(bg_sprite)
+
+            except Exception as e:
+                print(
+                    f"[ERROR] Не удалось загрузить текстуру {texture_path}: {e}"
+                )
+                arcade.set_background_color(arcade.color.SKY_BLUE)
+                self.background_list = None
+
+        elif color:
+            # Цветной фон
+            arcade.set_background_color(color)
+            self.background_list = None
+        else:
+            # Фон по умолчанию
+            arcade.set_background_color(arcade.color.SKY_BLUE)
+            self.background_list = None
+
+    def update_enemies(self):
+        """Обновление врагов и проверка коллизий с игроком (отбрасывание)"""
+        if not self.enemy_list:
+            return
+
+        self.enemy_list.update()
+
+        for enemy in self.enemy_list:
+            if arcade.check_for_collision(self.player, enemy):
+                if self.invincible_frames <= 0:
+                    # Урон здоровью
+                    self.player.take_damage(enemy.damage)
+                    print(
+                        f"[DEBUG] Урон от врага! Здоровье: {self.player.health}"
+                    )
+
+                    self.invincible_frames = 60
+                    self.hurt_flash_timer = 60
+
+                    # Отбрасывание
+                    if self.player.center_x < enemy.center_x:
+                        self.player.change_x = -12
+                    else:
+                        self.player.change_x = 12
+                    self.player.change_y = 8
+
+                    # Проверка потери жизни
+                    if self.player.health <= 0:
+                        life_lost = self.player.lose_life()
+                        if life_lost:
+                            print(
+                                f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}"
+                            )
+                            self.game_manager.lives = (
+                                self.player.lives
+                            )  # синхронизация
+
+                            # Телепорт при потере жизни
+                            self.respawn_player()
+
+                            if not self.player.is_alive:
+                                self.pending_game_over = True
+                    break
+
 
 class GroundLevel(BaseLevel):
     """Уровень "Земля"."""
@@ -716,6 +909,12 @@ class GroundLevel(BaseLevel):
         if game_manager.has_all_gems:
             self.door_active = False  # для второго захода
 
+    def set_background(self):
+        super().set_background(
+            texture_path=":resources:images/backgrounds/abstract_2.jpg"
+        )
+        # или цветной: super().set_background(color=arcade.color.SKY_BLUE)
+
 
 class DungeonLevel(BaseLevel):
     """Уровень "Подземелье"."""
@@ -729,6 +928,12 @@ class DungeonLevel(BaseLevel):
             spawn_point=PLAYER_SPAWN_DUNGEON,
         )
 
+    def set_background(self):
+        super().set_background(
+            texture_path=":resources:images/backgrounds/abstract_1.jpg"
+        )
+        # или цветной: super().set_background(color=arcade.color.DARK_GRAY)
+
 
 class SkyLevel(BaseLevel):
     """Уровень "Небо"."""
@@ -741,3 +946,9 @@ class SkyLevel(BaseLevel):
             next_level_name="ground",
             spawn_point=PLAYER_SPAWN_SKY,
         )
+
+    def set_background(self):
+        super().set_background(
+            texture_path=":resources:images/backgrounds/abstract_2.jpg"
+        )
+        # или цветной: super().set_background(color=arcade.color.SKY_BLUE)

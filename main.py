@@ -5,15 +5,13 @@
 #  - главное окно игры
 #  - инициализация менеджера состояний
 
-# Метод center_window:
-#  - центрирование окна на экране
-
 # Метод main (внизу):
 #  - главная точка входа в приложение
 
 import arcade
 from states import StateManager, StartView
 from gui_manager import GUIManager
+from window_manager import WindowManager
 
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 
@@ -23,34 +21,24 @@ class GameWindow(arcade.Window):
 
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        self.center_window()
+        self.window_manager = WindowManager(self)
+        self.window_manager.center_window()
+
         self.background_color = arcade.color.AMAZON
-        self.gui_manager = GUIManager(self)  # добавил GUI менеджер
-        self.state_manager = StateManager(
-            self, self.gui_manager
-        )  # передаю в StateManager
-        # Устанавливаю начальное состояние
+        self.gui_manager = GUIManager(self)
+        self.state_manager = StateManager(self, self.gui_manager)
         self.state_manager.change_state(StartView(self.state_manager))
 
-    def center_window(self):
-        """Центрирует окно на экране"""
-        # Получаем основной монитор через pyglet.display
-        from pyglet.display import get_display
+    def on_resize(self, width, height):
+        super().on_resize(width, height)
 
-        display = get_display()
-        screens = display.get_screens()
-        screen = screens[0]  # основной экран
+        current_view = self.state_manager._current_state
 
-        # Размер экрана
-        screen_width = screen.width
-        screen_height = screen.height
-
-        # Вычисляем позицию для центрирования
-        x = (screen_width - SCREEN_WIDTH) // 2
-        y = (screen_height - SCREEN_HEIGHT) // 2
-
-        # Устанавливаем позицию окна
-        self.set_location(x, y)
+        if current_view:
+            if hasattr(current_view, "on_resize"):
+                current_view.on_resize(width, height)
+            if hasattr(current_view, "resize_gui"):
+                current_view.resize_gui(width, height)
 
     def on_draw(self):
         self.state_manager.on_draw()
@@ -61,7 +49,10 @@ class GameWindow(arcade.Window):
         self.gui_manager.on_update(delta_time)  # обновляю GUI
 
     def on_key_press(self, key: int, modifiers: int):
-        self.state_manager.on_key_press(key, modifiers)
+        if key == arcade.key.F11:
+            self.window_manager.toggle_fullscreen()
+        else:
+            self.state_manager.on_key_press(key, modifiers)
 
     def on_key_release(self, key: int, modifiers: int):
         self.state_manager.on_key_release(key, modifiers)

@@ -3,7 +3,7 @@
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBgF9AIsVFZHrB4VINaHsvUJYFUkfUpo+pSxmKnPgGm2ARnuHwXkA3xxT05awqcPWVwTiLWQsDaauDaaWnR5bGqwmYOubhQMPkAonRGTDkFqCJVPyOUNAwnqCWEAeFcMkQ==
+   eJxjYBgF9AIsVFZHrB4VINaHsvUJYFUkfUpo+pSxmKnPgGm2ARnuHwXkA3xxT05awqcPWVwTiLWQsDaauDaaWnR5bGqwmYOubhQMPEBPH4TSGTHpEKSGUPmEXN4wkKCeEAYAe5cMlQ==
   </data>
  </layer>
  <layer id="5" name="ladders" width="30" height="15">
