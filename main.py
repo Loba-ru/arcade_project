@@ -1,31 +1,33 @@
 # ========== ТОЧКА ВХОДА И ГЛАВНОЕ ОКНО ==========
-# Основной файл запуска приложения
+# Основной файл запуска игры Monster Chase (arcade)
 
 # Класс GameWindow:
-#  - главное окно игры
-#  - инициализация менеджера состояний
+# - главное окно игры
+# - инициализация менеджера состояний
 
-# Метод main (внизу):
-#  - главная точка входа в приложение
 
 import arcade
-from states import StateManager, StartView
-from gui_manager import GUIManager
+from file_manager import FileManager
 from window_manager import WindowManager
-
+from gui_manager import GUIManager
+from states import StateManager, StartView
 from constants import SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE
 
 
 class GameWindow(arcade.Window):
-    """Окно игры, которое делегирует всё менеджеру состояний"""
+    """Окно игры, которое делегирует всё менеджеру состояний."""
 
     def __init__(self):
         super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-        self.window_manager = WindowManager(self)
-        self.window_manager.center_window()
-
         self.background_color = arcade.color.AMAZON
+
+        self.window_manager = WindowManager(self)
+        self.window_manager.toggle_fullscreen()
+
+        self.file_manager = FileManager(self)
+
         self.gui_manager = GUIManager(self)
+
         self.state_manager = StateManager(self, self.gui_manager)
         self.state_manager.change_state(StartView(self.state_manager))
 
@@ -42,11 +44,11 @@ class GameWindow(arcade.Window):
 
     def on_draw(self):
         self.state_manager.on_draw()
-        self.gui_manager.draw()  # рисовую GUI поверх
+        self.gui_manager.draw()
 
     def on_update(self, delta_time: float):
         self.state_manager.on_update(delta_time)
-        self.gui_manager.on_update(delta_time)  # обновляю GUI
+        self.gui_manager.on_update(delta_time)
 
     def on_key_press(self, key: int, modifiers: int):
         if key == arcade.key.F11:
@@ -58,13 +60,11 @@ class GameWindow(arcade.Window):
         self.state_manager.on_key_release(key, modifiers)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        self.gui_manager.on_mouse_press(x, y, button, modifiers)  # сначала GUI
+        self.gui_manager.on_mouse_press(x, y, button, modifiers)
         self.state_manager.on_mouse_press(x, y, button, modifiers)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
-        self.gui_manager.on_mouse_motion(
-            x, y, dx, dy
-        )  # для эффектов наведения
+        self.gui_manager.on_mouse_motion(x, y, dx, dy)
 
 
 if __name__ == "__main__":

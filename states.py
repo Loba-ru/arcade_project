@@ -1,5 +1,5 @@
 # ========== УПРАВЛЕНИЕ ЭКРАНАМИ ==========
-# Модуль реализует паттерн State для управления экранами приложения
+# Модуль для управления основными экранами игры Monster Chase (arcade)
 
 # Класс StateManager (менеджер состояний):
 #  - управляет тем, какой экран сейчас активен
@@ -57,7 +57,6 @@ class StateManager:
 
     def __init__(self, window: arcade.Window, gui_manager=None):
         self.window = window
-        self.window_manager = window.window_manager
         self.gui_manager = gui_manager
         self._current_state: GameState = None
 
@@ -258,7 +257,7 @@ class MenuView(GameState):
                 on_new_game_callback=self.start_new_game
             )
 
-        self.state_manager.window_manager.show_cursor()
+        self.state_manager.window.window_manager.show_cursor()
 
     def _update_text_colors(self):
         difficulties = ["ЛЕГКАЯ", "СРЕДНЯЯ", "ТЯЖЁЛАЯ"]
@@ -272,7 +271,6 @@ class MenuView(GameState):
             )
 
     def start_new_game(self, event):
-        print("[GUI] Нажата кнопка 'Новая игра'")
         self.state_manager.change_state(
             GameplayView(self.state_manager, self.difficulty)
         )
@@ -443,7 +441,7 @@ class GameplayView(GameState):
             if self.state_manager.gui_manager:
                 self.state_manager.gui_manager.hide_gui()
 
-        self.state_manager.window_manager.hide_cursor()
+        self.state_manager.window.window_manager.hide_cursor()
 
     def on_draw(self):
         if self.use_dummy:  # заглушка

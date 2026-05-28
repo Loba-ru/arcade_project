@@ -1,5 +1,6 @@
 # ========== АРХИТЕКТУРА СУЩНОСТЕЙ ==========
-#
+# Модуль с классами сущностей, предметов, инвентаря игры Monster Chase (arcade)
+
 # Иерархия классов Существ:
 # Entity (базовый класс)
 # ├── Player (игрок)
@@ -21,7 +22,6 @@
 # Inventory (инвентарь игрока)
 # DustParticle (для эффекта приземления)
 
-
 import arcade
 import random
 from abc import ABC, abstractmethod
@@ -30,10 +30,10 @@ from constants import *
 
 
 class Inventory:
-    """Инвентарь игрока"""
+    """Инвентарь игрока."""
 
     def __init__(self):
-        self.items = {}  # {"emerald": 1, "sapphire": 1, "ruby": 1, "coin": 15}
+        self.items = {}
 
     def add(self, item_type, count=1):
         self.items[item_type] = self.items.get(item_type, 0) + count
@@ -53,16 +53,18 @@ class Inventory:
         return self.items.get(item_type, 0)
 
     def total_gems(self):
-        """Возвращает общее количество драгоценных камней"""
+        """Возвращает общее количество драгоценных камней."""
         gem_types = ["emerald", "sapphire", "ruby"]
         return sum(self.get_count(g) for g in gem_types)
 
 
 class Entity(arcade.Sprite, ABC):
-    """Базовый класс для всех живых существ"""
+    """Базовый класс для всех живых существ."""
 
-    def __init__(self, path: str, scale: float, health: int, speed: float):
-        super().__init__(path, scale)
+    def __init__(
+        self, image_path: str, scale: float, health: int, speed: float
+    ):
+        super().__init__(image_path, scale)
         self.health = health
         self.speed = speed
         self.is_alive = True
@@ -79,11 +81,19 @@ class Entity(arcade.Sprite, ABC):
 
 
 class Player(Entity):
-    """Игрок"""
+    """Игрок."""
 
-    def __init__(self, x: float, y: float, scale=1.0, health=100, speed=5.0):
+    def __init__(
+        self,
+        image_path: str,
+        x: float,
+        y: float,
+        scale=1.0,
+        health=100,
+        speed=5.0,
+    ):
         super().__init__(
-            ":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png",
+            image_path,
             scale,
             health,
             speed,
@@ -97,13 +107,12 @@ class Player(Entity):
         self.inventory = Inventory()
 
     def take_damage(self, amount: int):
-        """Получение урона (уменьшение здоровья)"""
         self.health -= amount
         if self.health <= 0:
             self.health = 0
 
     def lose_life(self):
-        """Потеря жизни (при health <= 0)"""
+        """Потеря жизни (при health <= 0)."""
         if self.lives > 0:
             self.lives -= 1
             self.health = self.max_health
@@ -113,7 +122,7 @@ class Player(Entity):
         return False
 
     def heal(self, amount: int):
-        """Лечение"""
+        """Лечение."""
         self.health = min(self.max_health, self.health + amount)
 
     def update(self, delta_time: float):
@@ -122,64 +131,39 @@ class Player(Entity):
 
 
 class AnimatedPlayer(Player):
-    """Игрок с анимацией из атласа"""
+    """Игрок с анимацией из атласа."""
 
-    def __init__(self, x: float, y: float, scale=1.0, health=100, speed=5.0):
-        super().__init__(x, y, scale, health, speed)
+    def __init__(
+        self,
+        textures: dict,
+        x: float,
+        y: float,
+        scale=1.0,
+        health=100,
+        speed=5.0,
+    ):
+        idle_texture = textures.get("idle", [None])[0]
+        super().__init__(idle_texture, x, y, scale, health, speed)
 
-        # Анимация
-        self.state = "idle"  # idle, walk, jump, fall, climb
-        self.textures = {}  # словарь {"idle": [текстуры], ...}
+        self.state = "idle"
+        self.textures = textures
+
         self.current_texture_index = 0
         self.animation_timer = 0
-        self.animation_speed = 0.12  # секунд на кадр
-        self.last_direction = 1  # 1 = вправо, -1 = влево
+        self.animation_speed = 0.12
+        self.last_direction = 1
 
-        # Загружаем текстуры
-        self.load_textures()
-
-        # Движок
         self.physics_engine = None
 
-    def load_textures(self):
-        """Загружает текстуры из спрайтшита femaleAdventurer_sheet.png"""
-        try:
-            file_name = "resources/images/entities/femaleAdventurer_sheet.png"
-            full_sheet = arcade.load_texture(file_name)
-
-            data = {
-                "idle": [(0, 0, 96, 128)],
-                "walk": [(i * 96, 512, 96, 128) for i in range(8)],
-                "jump": [(96, 0, 96, 128)],
-                "fall": [(192, 0, 96, 128)],
-                "climb": [(480, 0, 96, 128), (576, 0, 96, 128)],
-            }
-
-            self.textures = {}
-            for state, regions in data.items():
-                self.textures[state] = []
-                for r in regions:
-                    sub_tex = full_sheet.crop(r[0], r[1], r[2], r[3])
-                    self.textures[state].append(sub_tex)
-
-            if self.textures.get("idle"):
-                self.texture = self.textures["idle"][0]
-
-        except Exception as e:
-            print(f"[WARNING] Не удалось загрузить текстуры: {e}")
-
     def update_state(self):
-        """Определяет текущее состояние игрока по физике"""
-        # Лестница — самый высокий приоритет
+        """Определяет текущее состояние игрока по физике."""
         if self.physics_engine and self.physics_engine.is_on_ladder():
-            # Если на лестнице и не двигается вверх/вниз — стоим (idle)
             if abs(self.change_y) > 0:
                 self.state = "climb"
             else:
                 self.state = "idle"
             return
 
-        # Падение или прыжок (по вертикальной скорости)
         if self.change_y > 0:
             self.state = "jump"
             return
@@ -187,27 +171,22 @@ class AnimatedPlayer(Player):
             self.state = "fall"
             return
 
-        # Ходьба или покой
         if abs(self.change_x) > 0:
             self.state = "walk"
         else:
             self.state = "idle"
 
     def update_animation(self, delta_time):
-        """Обновляет анимацию в зависимости от состояния"""
-        # Обновляем состояние
+        """Обновляет анимацию в зависимости от состояния."""
         self.update_state()
 
-        # Получаем список текстур для текущего состояния
         textures = self.textures.get(self.state, self.textures.get("idle", []))
         if not textures:
             return
 
-        # Защита от выхода за границы списка
         if self.current_texture_index >= len(textures):
             self.current_texture_index = 0
 
-        # Обновляем таймер
         self.animation_timer += delta_time
 
         if self.animation_timer >= self.animation_speed:
@@ -216,10 +195,8 @@ class AnimatedPlayer(Player):
                 self.current_texture_index + 1
             ) % len(textures)
 
-        # Устанавливаем текстуру
         base_texture = textures[self.current_texture_index]
 
-        # Отражение по горизонтали (направление движения)
         if self.change_x > 0:
             self.last_direction = 1
             self.texture = base_texture
@@ -227,7 +204,6 @@ class AnimatedPlayer(Player):
             self.last_direction = -1
             self.texture = base_texture.flip_horizontally()
         else:
-            # Стоим на месте — используем последнее направление
             if self.last_direction == -1:
                 self.texture = base_texture.flip_horizontally()
             else:
@@ -235,7 +211,7 @@ class AnimatedPlayer(Player):
 
 
 class Enemy(Entity, ABC):
-    """Базовый враг с ИИ движения"""
+    """Базовый враг с ИИ движения."""
 
     def __init__(
         self, path: str, scale: float, health: int, speed: float, damage: int
@@ -251,6 +227,8 @@ class Enemy(Entity, ABC):
 
 
 class EasyEnemy(Enemy):
+    """Враг простой сложности."""
+
     def __init__(self, x: float, y: float):
         super().__init__(
             ":resources:images/enemies/slimeGreen.png",
@@ -261,27 +239,27 @@ class EasyEnemy(Enemy):
         )
         self.center_x = x
         self.center_y = y
-        self.change_x = 1.5  # скорость движения
-        self.boundary_left = x - 150  # левая граница
-        self.boundary_right = x + 150  # правая граница
-        self.direction = 1  # 1 = вправо, -1 = влево
+        self.change_x = 1.5
+        self.boundary_left = x - 150
+        self.boundary_right = x + 150
+        self.direction = 1
 
     def update(self, delta_time: float):
-        # Движение
         self.center_x += self.change_x * self.direction
 
-        # Разворот у границ
         if self.center_x >= self.boundary_right:
             self.center_x = self.boundary_right
             self.direction = -1
-            self.scale_x = -0.8  # отражение
+            self.scale_x = -0.8
         elif self.center_x <= self.boundary_left:
             self.center_x = self.boundary_left
             self.direction = 1
-            self.scale_x = 0.8  # обратно
+            self.scale_x = 0.8
 
 
 class MediumEnemy(Enemy):
+    """Враг средней сложности."""
+
     def __init__(self, x: float, y: float):
         super().__init__(
             ":resources:images/enemies/slimeBlue.png",
@@ -295,6 +273,8 @@ class MediumEnemy(Enemy):
 
 
 class HardEnemy(Enemy):
+    """Враг высокой сложности."""
+
     def __init__(self, x: float, y: float):
         super().__init__(
             ":resources:images/enemies/slimePurple.png",
@@ -308,6 +288,8 @@ class HardEnemy(Enemy):
 
 
 class BaseItem(arcade.Sprite):
+    """Базовый класс для внутриигровых предметов."""
+
     def __init__(self, image_path, scale, gem_type, x, y):
         super().__init__(image_path, scale)
         self.gem_type = gem_type
@@ -321,32 +303,42 @@ class BaseItem(arcade.Sprite):
 
 
 class Emerald(BaseItem):
+    """Изумруд."""
+
     def __init__(self, x, y):
         super().__init__(EMERALD_IMAGE, GEM_SCALE, "emerald", x, y)
 
 
 class Sapphire(BaseItem):
+    """Сапфир."""
+
     def __init__(self, x, y):
         super().__init__(SAPPHIRE_IMAGE, GEM_SCALE, "sapphire", x, y)
 
 
 class Ruby(BaseItem):
+    """Рубин."""
+
     def __init__(self, x, y):
         super().__init__(RUBY_IMAGE, GEM_SCALE, "ruby", x, y)
 
 
 class Key(BaseItem):
+    """Ключ."""
+
     def __init__(self, x, y):
         super().__init__(KEY_IMAGE, KEY_SCALE, "key", x, y)
 
 
 class Coin(BaseItem):
+    """Монета."""
+
     def __init__(self, x, y):
         super().__init__(COIN_IMAGE, COIN_SCALE, "coin", x, y)
 
 
 class DustParticle(arcade.SpriteCircle):
-    """Частица пыли для эффекта приземления"""
+    """Частица пыли для эффекта приземления."""
 
     def __init__(self, x, y):
         color = random.choice(

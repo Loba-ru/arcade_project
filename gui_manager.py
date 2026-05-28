@@ -1,9 +1,10 @@
 # ========== GUI ИНТЕРФЕЙС ==========
-
-# Класс GUIManager (основной класс управления GUI):
-#  - обеспечивает централизованное управление GUI для всех состояний (экранов)
-#  - изолирует всю работу с кнопками от основной логики приложения
-
+# Модуль для работы с GUI игры Monster Chase (arcade)
+#
+# Класс GUIManager (основной класс управления GUI) :
+#  - централизованное управление GUI для всех состояний
+#  - изоляция работы с GUI от основной логики приложения
+#
 # Предопределённые стили оформления:
 #  - унифицированный шаблон стиля кнопок
 
@@ -18,21 +19,21 @@ from arcade.gui import (
 
 button_style = {
     "normal": arcade.gui.UIFlatButton.UIStyle(
-        bg=(255, 215, 0),  # золотой цвет (RGB)
+        bg=(255, 215, 0),
         border=arcade.color.DARK_GREEN,
         border_width=2,
         font_color=arcade.color.GRAY,
         font_size=14,
     ),
     "hover": arcade.gui.UIFlatButton.UIStyle(
-        bg=(255, 255, 0),  # жёлтый
+        bg=(255, 255, 0),
         border=arcade.color.BLACK,
         border_width=2,
         font_color=arcade.color.BLACK,
         font_size=14,
     ),
     "press": arcade.gui.UIFlatButton.UIStyle(
-        bg=(255, 165, 0),  # тёмно‑оранжевый
+        bg=(255, 165, 0),
         border=arcade.color.RED,
         border_width=2,
         font_color=arcade.color.WHITE,
@@ -42,28 +43,25 @@ button_style = {
 
 
 class GUIManager:
-    """Централизованное управление GUI для всех состояний"""
+    """Централизованное управление GUI для всех состояний."""
 
     def __init__(self, window: arcade.Window):
         self.window = window
         self.manager = UIManager()
         self.manager.enable()
-
-        # Корневые лейауты для разных экранов
         self.current_layout = None
 
     def show_menu_gui(self, on_new_game_callback):
-        """Показывает GUI для меню (кнопка 'Новая игра')"""
+        """Показывает GUI для меню (кнопка 'Новая игра')."""
 
         self.manager.clear()
 
         anchor = UIAnchorLayout()
         box = UIBoxLayout(vertical=True, space_between=20, align="center")
 
-        spacer = UIWidget(width=200, height=250)  # 200 пикселей отступа
+        spacer = UIWidget(width=200, height=250)
         box.add(spacer)
 
-        # Создаём простую кнопку с полным набором стилей
         new_game_button = UIFlatButton(
             text="НОВАЯ ИГРА", width=200, height=50, style=button_style
         )
@@ -76,20 +74,20 @@ class GUIManager:
         self.current_layout = anchor
 
     def hide_gui(self):
-        """Скрывает GUI"""
+        """Скрывает GUI."""
         self.manager.clear()
         self.current_layout = None
 
     def draw(self):
-        """Отрисовка GUI"""
+        """Отрисовка GUI."""
         self.manager.draw()
 
     def on_update(self, delta_time: float):
-        """Обновление GUI"""
+        """Обновление GUI."""
         self.manager.on_update(delta_time)
 
     def on_mouse_press(self, x: int, y: int, button: int, modifiers: int):
-        """Обработка кликов для GUI"""
+        """Обработка кликов для GUI."""
         self.manager.on_mouse_press(x, y, button, modifiers)
 
     def on_mouse_motion(self, x: int, y: int, dx: int, dy: int):
@@ -102,5 +100,5 @@ class GUIManager:
         self.manager.enable()
 
     def is_visible(self) -> bool:
-        """Проверяет, активен ли GUI"""
+        """Проверяет, активен ли GUI."""
         return self.current_layout is not None
