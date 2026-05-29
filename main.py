@@ -8,6 +8,7 @@
 
 import arcade
 from file_manager import FileManager
+from sound_manager import SoundManager
 from window_manager import WindowManager
 from gui_manager import GUIManager
 from states import StateManager, StartView
@@ -25,6 +26,8 @@ class GameWindow(arcade.Window):
         self.window_manager.toggle_fullscreen()
 
         self.file_manager = FileManager(self)
+
+        self.sound_manager = SoundManager(self.file_manager)
 
         self.gui_manager = GUIManager(self)
 

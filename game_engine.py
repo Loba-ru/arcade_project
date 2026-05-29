@@ -12,6 +12,7 @@
 import arcade
 
 from file_manager import FileManager
+from sound_manager import SoundManager
 from window_manager import WindowManager
 from texture_manager import TextureManager
 from levels import GroundLevel, DungeonLevel, SkyLevel
@@ -145,7 +146,7 @@ class MyGame:
                 self.on_win_callback()
             else:
                 print("[DEBUG] ПОБЕДА! (тестовый режим)")
-                self.window.close()
+                arcade.exit()
 
     def on_resize(self, width, height):
         """Обновление камер при изменении размера окна."""
@@ -169,6 +170,8 @@ class TestWindow(arcade.Window):
         self.window_manager.hide_cursor()
 
         self.file_manager = FileManager(self)
+
+        self.sound_manager = SoundManager(self.file_manager)
 
         self.game_manager = MyGame(self)
         self.game_manager.start_game("ground")

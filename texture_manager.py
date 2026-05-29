@@ -4,7 +4,7 @@
 
 import arcade
 
-from constants import ENTITIES_DIR
+from constants import ENTITIES_DIR, ITEMS_DIR, COIN_FRAMES
 from window_manager import WindowManager
 
 
@@ -37,4 +37,12 @@ class TextureManager:
             climb_frames.append(arcade.load_texture(file_path))
         textures["climb"] = climb_frames
 
+        return textures
+
+    def load_coin_textures(self):
+        """Загружает текстуры для анимированной монеты."""
+        textures = []
+        for frame_name in COIN_FRAMES:
+            path = self.file_manager.get_image_path(ITEMS_DIR, frame_name)
+            textures.append(arcade.load_texture(path))
         return textures

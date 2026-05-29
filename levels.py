@@ -54,6 +54,7 @@ class BaseLevel(arcade.View):
         self.gem_list = None
         self.key_list = None
         self.coin_list = None
+        self.collected_coin_list = None
         self.door_list = None
         self.door_trigger_list = None
         self.block_list = None
@@ -94,44 +95,61 @@ class BaseLevel(arcade.View):
         self.setup_cameras()
         self.setup_gui()
 
+        fm = self.game_manager.window.file_manager
+
         if self.level_name == "sky":
             self.gem_list = arcade.SpriteList()
             self.key_list = arcade.SpriteList()
 
-            emerald = Emerald(EMERALD_SPAWN[0], EMERALD_SPAWN[1])
-            sapphire = Sapphire(SAPPHIRE_SPAWN[0], SAPPHIRE_SPAWN[1])
-            ruby = Ruby(RUBY_SPAWN[0], RUBY_SPAWN[1])
+            img_path = fm.get_image_path(ITEMS_DIR, EMERALD_IMAGE)
+            emerald = Emerald(img_path, EMERALD_SPAWN[0], EMERALD_SPAWN[1])
+
+            img_path = fm.get_image_path(ITEMS_DIR, SAPPHIRE_IMAGE)
+            sapphire = Sapphire(img_path, SAPPHIRE_SPAWN[0], SAPPHIRE_SPAWN[1])
+
+            img_path = fm.get_image_path(ITEMS_DIR, RUBY_IMAGE)
+            ruby = Ruby(img_path, RUBY_SPAWN[0], RUBY_SPAWN[1])
 
             self.gem_list.append(emerald)
             self.gem_list.append(sapphire)
             self.gem_list.append(ruby)
             self.total_gems = 3
 
-            key = Key(KEY_SPAWN_SKY[0], KEY_SPAWN_SKY[1])
+            img_path = fm.get_image_path(ITEMS_DIR, KEY_IMAGE)
+            key = Key(img_path, KEY_SPAWN_SKY[0], KEY_SPAWN_SKY[1])
             self.key_list.append(key)
 
         elif self.level_name == "dungeon":
             self.key_list = arcade.SpriteList()
-            key = Key(KEY_SPAWN_DUNGEON[0], KEY_SPAWN_DUNGEON[1])
+
+            img_path = fm.get_image_path(ITEMS_DIR, KEY_IMAGE)
+            key = Key(img_path, KEY_SPAWN_DUNGEON[0], KEY_SPAWN_DUNGEON[1])
             self.key_list.append(key)
 
         elif self.level_name == "ground":
             if not self.game_manager.has_all_gems:
                 self.key_list = arcade.SpriteList()
-                key = Key(KEY_SPAWN_GROUND[0], KEY_SPAWN_GROUND[1])
+
+                img_path = fm.get_image_path(ITEMS_DIR, KEY_IMAGE)
+                key = Key(img_path, KEY_SPAWN_GROUND[0], KEY_SPAWN_GROUND[1])
                 self.key_list.append(key)
             else:
                 self.key_list = None
 
             self.coin_list = arcade.SpriteList()
-            coin = Coin(704, 256)
+
+            textures = self.game_manager.texture_manager.load_coin_textures()
+            coin = AnimatedCoin(textures, 704, 256)
             self.coin_list.append(coin)
 
             self.enemy_list = arcade.SpriteList()
+
             enemy = EasyEnemy(832, 178)
             self.enemy_list.append(enemy)
 
         self.dust_particles = arcade.SpriteList()
+
+        self.collected_coin_list = arcade.SpriteList()
 
     def load_map(self):
         """Загрузка карты из Tiled."""
@@ -381,6 +399,9 @@ class BaseLevel(arcade.View):
         if self.coin_list:
             self.coin_list.draw()
 
+        if self.collected_coin_list:
+            self.collected_coin_list.draw()
+
         if self.enemy_list:
             self.enemy_list.draw()
 
@@ -440,6 +461,13 @@ class BaseLevel(arcade.View):
             self.was_jumping = not on_ground
 
         self.dust_particles.update()
+
+        # Обновление анимации собранных монет
+        if self.collected_coin_list:
+            for coin in self.collected_coin_list:
+                if hasattr(coin, "update_animation"):
+                    coin.update_animation(delta_time)
+
         self.update_enemies()
 
         self.player.is_walking = (
@@ -478,17 +506,26 @@ class BaseLevel(arcade.View):
                 self.key_count += 1
                 print(f"[DEBUG] Подобран ключ! Всего ключей: {self.key_count}")
 
+        # Сбор монет с анимацией
         if self.coin_list:
             coins_hit = arcade.check_for_collision_with_list(
                 self.player, self.coin_list
             )
-            for coin in coins_hit:
-                coin.collect(self.player.inventory)
+            for coin in coins_hit[:]:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "coin", volume=0.5
+                    )
+
+                if hasattr(coin, "collect_with_animation"):
+                    coin.remove_from_sprite_lists()
+                    self.collected_coin_list.append(coin)
+                    coin.collect_with_animation(self.player.inventory)
+                else:
+                    coin.collect(self.player.inventory)
+
                 self.game_manager.coin_count = self.player.inventory.get_count(
                     "coin"
-                )
-                print(
-                    f"[COIN] Собрано монет: {self.player.inventory.get_count('coin')}"
                 )
 
         self.check_hazards()

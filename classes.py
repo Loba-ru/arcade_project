@@ -62,9 +62,9 @@ class Entity(arcade.Sprite, ABC):
     """Базовый класс для всех живых существ."""
 
     def __init__(
-        self, image_path: str, scale: float, health: int, speed: float
+        self, path_or_texture: str, scale: float, health: int, speed: float
     ):
-        super().__init__(image_path, scale)
+        super().__init__(path_or_texture, scale)
         self.health = health
         self.speed = speed
         self.is_alive = True
@@ -290,8 +290,8 @@ class HardEnemy(Enemy):
 class BaseItem(arcade.Sprite):
     """Базовый класс для внутриигровых предметов."""
 
-    def __init__(self, image_path, scale, gem_type, x, y):
-        super().__init__(image_path, scale)
+    def __init__(self, path_or_texture, scale, gem_type, x, y):
+        super().__init__(path_or_texture, scale)
         self.gem_type = gem_type
         self.center_x = x
         self.center_y = y
@@ -305,36 +305,71 @@ class BaseItem(arcade.Sprite):
 class Emerald(BaseItem):
     """Изумруд."""
 
-    def __init__(self, x, y):
-        super().__init__(EMERALD_IMAGE, GEM_SCALE, "emerald", x, y)
+    def __init__(self, image_path: str, x, y):
+        super().__init__(image_path, GEM_SCALE, "emerald", x, y)
 
 
 class Sapphire(BaseItem):
     """Сапфир."""
 
-    def __init__(self, x, y):
-        super().__init__(SAPPHIRE_IMAGE, GEM_SCALE, "sapphire", x, y)
+    def __init__(self, image_path: str, x, y):
+        super().__init__(image_path, GEM_SCALE, "sapphire", x, y)
 
 
 class Ruby(BaseItem):
     """Рубин."""
 
-    def __init__(self, x, y):
-        super().__init__(RUBY_IMAGE, GEM_SCALE, "ruby", x, y)
+    def __init__(self, image_path: str, x, y):
+        super().__init__(image_path, GEM_SCALE, "ruby", x, y)
 
 
 class Key(BaseItem):
     """Ключ."""
 
-    def __init__(self, x, y):
-        super().__init__(KEY_IMAGE, KEY_SCALE, "key", x, y)
+    def __init__(self, image_path: str, x, y):
+        super().__init__(image_path, KEY_SCALE, "key", x, y)
 
 
 class Coin(BaseItem):
     """Монета."""
 
-    def __init__(self, x, y):
-        super().__init__(COIN_IMAGE, COIN_SCALE, "coin", x, y)
+    def __init__(self, image_path: str, x, y):
+        super().__init__(image_path, COIN_SCALE, "coin", x, y)
+
+
+class AnimatedCoin(Coin):
+    """Монета с анимацией при сборе."""
+
+    def __init__(self, textures: list, x: float, y: float):
+        super().__init__(textures[0], x, y)
+        self.textures = textures
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.05
+        self.is_collecting = False
+
+    def collect_with_animation(self, inventory):
+        """Запускает анимацию после сбора монеты."""
+        self.pending_inventory = inventory
+        self.is_collecting = True
+        self.animation_timer = 0
+        self.current_frame = 0
+
+    def update_animation(self, delta_time: float):
+        """Обновляет анимацию монеты при сборе."""
+        if not self.is_collecting:
+            return
+
+        self.animation_timer += delta_time
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_frame += 1
+
+            if self.current_frame >= len(self.textures):
+                self.collect(self.pending_inventory)
+                return
+            else:
+                self.texture = self.textures[self.current_frame]
 
 
 class DustParticle(arcade.SpriteCircle):

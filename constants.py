@@ -44,13 +44,13 @@ PLAYER_SPAWN_GROUND_B = (3648, 1408)
 PLAYER_SPAWN_DUNGEON = (192, 1408)
 PLAYER_SPAWN_SKY = (3648, 128)
 
-EMERALD_SPAWN = (832, 1426)
-SAPPHIRE_SPAWN = (1728, 1426)
-RUBY_SPAWN = (3520, 1426)
+EMERALD_SPAWN = (832, 1433)
+SAPPHIRE_SPAWN = (1728, 1433)
+RUBY_SPAWN = (3520, 1433)
 
-KEY_SPAWN_GROUND = (320, 1428)
-KEY_SPAWN_DUNGEON = (3648, 148)
-KEY_SPAWN_SKY = (1088, 148)
+KEY_SPAWN_GROUND = (320, 1435)
+KEY_SPAWN_DUNGEON = (3648, 155)
+KEY_SPAWN_SKY = (1088, 155)
 
 # ========== ИГРОК ==========
 PLAYER_SCALE = 1
@@ -84,12 +84,13 @@ BG_SKY = "sky_bg.png"
 ENTITIES_DIR = "entities"
 PLAYER_IMAGE = "player_idle.png"
 
-TILESET_PATH = "resources/images/tiles/tiles_spritesheet.tsx"
-COIN_IMAGE = "resources/images/items/coin.png"
-KEY_IMAGE = "resources/images/items/key.png"
-EMERALD_IMAGE = "resources/images/items/stone_green.png"
-SAPPHIRE_IMAGE = "resources/images/items/stone_blue.png"
-RUBY_IMAGE = "resources/images/items/stone_red.png"
+ITEMS_DIR = "items"
+KEY_IMAGE = "key.png"
+EMERALD_IMAGE = "gem_green.png"
+SAPPHIRE_IMAGE = "gem_blue.png"
+RUBY_IMAGE = "gem_red.png"
+COIN_IMAGE = "coin1.png"
+COIN_FRAMES = ["coin1.png", "coin2.png", "coin3.png", "coin4.png"]
 
 # ========== РЕЖИМ ОТЛАДКИ ==========
 GAMEPLAY_USE_DUMMY = False
