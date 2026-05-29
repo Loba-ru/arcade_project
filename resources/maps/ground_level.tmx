@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="15" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="16" nextobjectid="3">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
+ <layer id="15" name="coins" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBjZYCoONql60cWn4pEfBdgBofCiRnjSOk6omYaoZccooD1AjxNapeXBln6HCwAAR1QKew==
+  </data>
+ </layer>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
    eJxjYBgF9AIsVFZHrB4VIDaAsvWAWB8PVkXSp4SmTxnNTJgedLMNGEYBPQG+uCcnLeHThyyuCcRaSFgbTVwbTS26PDY12MxBVzcKBh6gpw9C6YyYdAhSQ6h8gmEYIEYtIQwqrwB7OwyV

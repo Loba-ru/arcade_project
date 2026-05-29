@@ -1,9 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="14" nextobjectid="2">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="15" nextobjectid="2">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
    eJxjYBgF9AJ2FMoTqwZdXSkQlyOxy4A4B8rPhPLL0NRkoenHpqYMC85hGAX0BsSmCWqYg6ymAIgLgbgIys/HIoeOi8iUh4mPgsEDyCmLCAFc5QoMYJOjFIPKNADxOyMx
+  </data>
+ </layer>
+ <layer id="14" name="coins" width="30" height="15">
+  <data encoding="base64" compression="zlib">
+   eJxjYBiZYCoBPil6yVUzCrCDwRJ25LgDlx58ZpFqz2AJn1GAANQuP7DpmYrEpoX5IxkAAHlUCeY=
   </data>
  </layer>
  <layer id="5" name="ladders" width="30" height="15">

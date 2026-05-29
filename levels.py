@@ -136,12 +136,6 @@ class BaseLevel(arcade.View):
             else:
                 self.key_list = None
 
-            self.coin_list = arcade.SpriteList()
-
-            textures = self.game_manager.texture_manager.load_coin_textures()
-            coin = AnimatedCoin(textures, 704, 256)
-            self.coin_list.append(coin)
-
             self.enemy_list = arcade.SpriteList()
 
             enemy = EasyEnemy(832, 178)
@@ -190,6 +184,15 @@ class BaseLevel(arcade.View):
                 "door_trigger"
             )
             self.door_list = self.tile_map.sprite_lists.get("door")
+
+        self.coin_list = self.tile_map.sprite_lists.get("coins")
+        if self.coin_list:
+            animated_coins = arcade.SpriteList()
+            texture = self.game_manager.texture_manager.load_coin_textures()
+            for coin in self.coin_list:
+                x, y = coin.center_x, coin.center_y
+                animated_coins.append(AnimatedCoin(texture, x, y))
+            self.coin_list = animated_coins
 
     def get_next_spawn_point(self):
         """Возвращает точку спавна для следующего уровня."""
@@ -291,8 +294,9 @@ class BaseLevel(arcade.View):
             anchor_x="center",
             batch=self.batch,
         )
+        coin = self.player.inventory.get_count("coin") if self.player else 0
         self.ui_coin_text = arcade.Text(
-            f"Монеты: {self.game_manager.coin_count}",
+            f"Монеты: {coin}",
             screen_width - 20,
             screen_height - 40,
             arcade.color.WHITE,
@@ -420,7 +424,9 @@ class BaseLevel(arcade.View):
         if self.is_paused:
             return
 
-        self.ui_coin_text.text = f"Монеты: {self.game_manager.coin_count}"
+        coin = self.player.inventory.get_count("coin") if self.player else 0
+        self.ui_coin_text.text = f"Монеты: {coin}"
+
         self.ui_level_difficulty_text.text = (
             self.game_manager.get_level_difficulty_text()
         )
@@ -488,6 +494,10 @@ class BaseLevel(arcade.View):
                 self.player, self.gem_list
             )
             for gem in gem_hit:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "gem", volume=0.8
+                    )
                 gem.collect(self.player.inventory)
                 gem.remove_from_sprite_lists()
                 print(f"[DEBUG] Подобран {gem.gem_type}!")
@@ -501,6 +511,10 @@ class BaseLevel(arcade.View):
                 self.player, self.key_list
             )
             for key in key_hit:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "key", volume=0.6
+                    )
                 key.collect(self.player.inventory)
                 key.remove_from_sprite_lists()
                 self.key_count += 1
@@ -523,10 +537,6 @@ class BaseLevel(arcade.View):
                     coin.collect_with_animation(self.player.inventory)
                 else:
                     coin.collect(self.player.inventory)
-
-                self.game_manager.coin_count = self.player.inventory.get_count(
-                    "coin"
-                )
 
         self.check_hazards()
         self.update_hurt_effect()

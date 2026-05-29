@@ -45,7 +45,6 @@ class MyGame:
         self.register_level("dungeon", DungeonLevel)
         self.register_level("sky", SkyLevel)
 
-        self.coin_count = 0
         self.lives = PLAYER_LIVES_DEFAULT
         self.difficulty = 1
 
@@ -65,8 +64,8 @@ class MyGame:
 
     def start_game(self, start_level: str = "ground"):
         """Запускает игру с указанного уровня."""
-        self.current_view = self.create_level(start_level)
-        # self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
+        # self.current_view = self.create_level(start_level)
+        self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
         self.window.show_view(self.current_view)
 
     def change_level(self, level_name: str):
@@ -88,15 +87,6 @@ class MyGame:
         """Возобновляет игру с паузы."""
         if self.current_view is not None:
             self.current_view.is_paused = False
-
-    def add_coin(self):
-        """Добавляет монету."""
-        self.coin_count += 1
-
-    def lose_life(self):
-        """Отнимает одну жизнь."""
-        if self.lives > 0:
-            self.lives -= 1
 
     def set_on_win_callback(self, callback):
         """Устанавливает callback на победу."""

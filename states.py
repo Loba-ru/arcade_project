@@ -501,7 +501,8 @@ class GameplayView(GameState):
         pass
 
     def on_win(self):
-        coins = self.game_manager.coin_count
+        player = self.game_manager.player if self.game_manager else None
+        coins = player.inventory.get_count("coin") if player else 0
         self.game_manager = None
         self.state_manager.change_state(
             ResultView(
@@ -514,7 +515,8 @@ class GameplayView(GameState):
         )
 
     def on_lose(self):
-        coins = self.game_manager.coin_count
+        player = self.game_manager.player if self.game_manager else None
+        coins = player.inventory.get_count("coin") if player else 0
         self.game_manager = None
         self.state_manager.change_state(
             ResultView(
