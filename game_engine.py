@@ -24,6 +24,7 @@ class MyGame:
     def __init__(self, window: arcade.Window):
         self.window = window
         self.has_all_gems = False
+        self.in_victory_portal = False
         self.player = None
 
         self.texture_manager = TextureManager(window.file_manager)
@@ -64,6 +65,7 @@ class MyGame:
     def start_game(self, start_level: str = "ground"):
         """Запускает игру с указанного уровня."""
         self.current_view = self.create_level(start_level)
+        # self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
         self.window.show_view(self.current_view)
 
     def change_level(self, level_name: str):
@@ -135,13 +137,15 @@ class MyGame:
             difficulty_name = "Ошибка"
         return f"Уровень: {level_name_display} | Сложность: {difficulty_name}"
 
-    def check_victory(self, current_level_name: str):
-        """Проверяет условие победы."""
-        if current_level_name == "ground" and self.has_all_gems:
-            print(
-                "[VICTORY] Игрок вернулся на старт со всеми драгоценностями!"
-            )
-            self.on_win_callback()
+    def check_victory_from_portal(self):
+        if self.in_victory_portal:
+            self.in_victory_portal = False
+            self.current_view = None
+            if hasattr(self, "on_win_callback") and self.on_win_callback:
+                self.on_win_callback()
+            else:
+                print("[DEBUG] ПОБЕДА! (тестовый режим)")
+                self.window.close()
 
     def on_resize(self, width, height):
         """Обновление камер при изменении размера окна."""

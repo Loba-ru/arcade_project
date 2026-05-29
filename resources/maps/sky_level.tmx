@@ -3,7 +3,7 @@
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBgF9AJ2FMoTqwZdXRkQl0PZpVB+DpSfCeWjq8lC0l+KQ00ZFpzDMAroDYhNE9QwB1lNARAXQjEI5OOQQ8ZFZMrDxEfB4AHklEWEALYypYwIeUoxAPQPIzE=
+   eJxjYBgF9AJ2FMoTqwZdXSkQlyOxy4A4B8rPhPLL0NRkoenHpqYMC85hGAX0BsSmCWqYg6ymAIgLgbgIys/HIoeOi8iUh4mPgsEDyCmLCAFc5QoMYJOjFIPKNADxOyMx
   </data>
  </layer>
  <layer id="5" name="ladders" width="30" height="15">
@@ -18,7 +18,7 @@
  </layer>
  <layer id="7" name="decoration" width="30" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBgFAwXSiBD3I0ENLvNGwfAHhNIMvrRBTLoZTVsjFxCKe2LKKGzqBlOaAgD9ngXp
+   eJxjYBgFAwXSiBDzI8IcmBps5o2CkQGQ4x5bmsGXNohJN6Npa+QCQnFPbHpDVzeY0hQA4tAFgw==
   </data>
  </layer>
  <layer id="9" name="hazards" width="30" height="15">

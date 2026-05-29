@@ -548,28 +548,22 @@ class BaseLevel(arcade.View):
         if not self.entry_exit_list:
             return
 
-        if arcade.check_for_collision_with_list(
+        hits = arcade.check_for_collision_with_list(
             self.player, self.entry_exit_list
-        ):
-            self.on_enter_portal()
+        )
 
-    def on_enter_portal(self):
-        """Обработка входа в портал."""
-        if (
-            self.level_name == "ground"
-            and self.player.inventory.total_gems() >= 3
-        ):
-            if (
-                hasattr(self.game_manager, "on_win_callback")
-                and self.game_manager.on_win_callback
-            ):
-                self.game_manager.check_victory("ground")
-            else:
-                print("[DEBUG] ПОБЕДА! (тестовый режим)")
-                arcade.close_window()
-            return
-
-        self.game_manager.change_level(self.next_level_name)
+        if self.game_manager.in_victory_portal:
+            if not hits:
+                self.game_manager.check_victory_from_portal()
+        else:
+            if hits:
+                if (
+                    self.level_name == "ground"
+                    and self.game_manager.has_all_gems
+                ):
+                    self.game_manager.in_victory_portal = True
+                else:
+                    self.game_manager.change_level(self.next_level_name)
 
     def show_portal_hint(self, message: str):
         """Показать подсказку у портала."""
@@ -588,6 +582,11 @@ class BaseLevel(arcade.View):
 
     def on_key_press(self, key, modifiers):
         """Обработка нажатия клавиш."""
+        if self.game_manager.in_victory_portal:
+            if key == arcade.key.LEFT:
+                self.player.change_x = -PLAYER_MOVEMENT_SPEED
+            return
+
         if key == arcade.key.LEFT:
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT:

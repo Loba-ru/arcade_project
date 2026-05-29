@@ -228,8 +228,12 @@ class MenuView(GameState):
                 )
                 self.difficulty_texts.append(text)
 
+            prompt_text = "F11 - полный/неполный экран | ENTER - новая игра"
+            if self.return_to_game is not None:
+                prompt_text += " | ESC - продолжить"
+
             self.prompt_text = arcade.Text(
-                "← →  - изменить сложность | ENTER - новая игра | ESC - продолжить",
+                prompt_text,
                 w // 2,
                 50,
                 arcade.color.LIGHT_GRAY,
@@ -400,43 +404,21 @@ class GameplayView(GameState):
             # ========== НАСТОЯЩАЯ ИГРА ==========
             print("[State] GameplayView: используется НАСТОЯЩАЯ ИГРА")
 
-            # Создаём игровой движок
-            self.game_manager = MyGame(self.state_manager.window)
-
-            # Назначаем callback-и ПЕРЕД запуском игры
-            self.game_manager.set_on_win_callback(
-                lambda: self.state_manager.change_state(
-                    ResultView(
-                        self.state_manager,
-                        won=True,
-                        coins=self.game_manager.coin_count,
-                        kills=0,
-                        difficulty=self.difficulty,
+            if self.game_manager is None:
+                # Первый запуск или после победы/поражения (создаём игровой движок)
+                self.game_manager = MyGame(self.state_manager.window)
+                self.game_manager.set_on_win_callback(self.on_win)
+                self.game_manager.set_on_lose_callback(self.on_lose)
+                self.game_manager.set_on_menu_callback(
+                    lambda: self.state_manager.change_state(
+                        MenuView(self.state_manager, return_to_game=self)
                     )
                 )
-            )
-            self.game_manager.set_on_lose_callback(
-                lambda: self.state_manager.change_state(
-                    ResultView(
-                        self.state_manager,
-                        won=False,
-                        coins=self.game_manager.coin_count,
-                        kills=0,
-                        difficulty=self.difficulty,
-                    )
-                )
-            )
-            self.game_manager.set_on_menu_callback(
-                lambda: self.state_manager.change_state(
-                    MenuView(self.state_manager, return_to_game=self)
-                )
-            )
-
-            # Передаем сложность в игру (до старта)
-            self.game_manager.set_difficulty_before_start(self.difficulty)
-
-            # Запускаем игру с выбранным уровнем (картой) и сложностью
-            self.game_manager.start_game("ground")
+                self.game_manager.set_difficulty_before_start(self.difficulty)
+                self.game_manager.start_game("ground")
+            else:
+                # Возврат из паузы – просто возобновляем гемплей
+                self.game_manager.resume()
 
             if self.state_manager.gui_manager:
                 self.state_manager.gui_manager.hide_gui()
@@ -517,6 +499,32 @@ class GameplayView(GameState):
     def on_mouse_press(self, x, y, button, modifiers):
         # настоящая игра
         pass
+
+    def on_win(self):
+        coins = self.game_manager.coin_count
+        self.game_manager = None
+        self.state_manager.change_state(
+            ResultView(
+                self.state_manager,
+                won=True,
+                coins=coins,
+                kills=0,
+                difficulty=self.difficulty,
+            )
+        )
+
+    def on_lose(self):
+        coins = self.game_manager.coin_count
+        self.game_manager = None
+        self.state_manager.change_state(
+            ResultView(
+                self.state_manager,
+                won=False,
+                coins=coins,
+                kills=0,
+                difficulty=self.difficulty,
+            )
+        )
 
 
 class ResultView(GameState):
