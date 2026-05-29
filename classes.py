@@ -214,9 +214,14 @@ class Enemy(Entity, ABC):
     """Базовый враг с ИИ движения."""
 
     def __init__(
-        self, path: str, scale: float, health: int, speed: float, damage: int
+        self,
+        path_or_texture: str,
+        scale: float,
+        health: int,
+        speed: float,
+        damage: int,
     ):
-        super().__init__(path, scale, health, speed)
+        super().__init__(path_or_texture, scale, health, speed)
         self.damage = damage
         self.change_x = random.choice([-1, 1]) * speed
         self.change_y = random.choice([-1, 1]) * speed
@@ -229,32 +234,51 @@ class Enemy(Entity, ABC):
 class EasyEnemy(Enemy):
     """Враг простой сложности."""
 
-    def __init__(self, x: float, y: float):
+    def __init__(self, image_path: str, x: float, y: float):
         super().__init__(
-            ":resources:images/enemies/slimeGreen.png",
+            image_path,
             0.8,
             health=1,
-            speed=50,
+            speed=80,
             damage=20,
         )
         self.center_x = x
         self.center_y = y
-        self.change_x = 1.5
         self.boundary_left = x - 150
         self.boundary_right = x + 150
         self.direction = 1
 
     def update(self, delta_time: float):
-        self.center_x += self.change_x * self.direction
+        self.center_x += self.speed * self.direction * delta_time
 
         if self.center_x >= self.boundary_right:
             self.center_x = self.boundary_right
             self.direction = -1
-            self.scale_x = -0.8
         elif self.center_x <= self.boundary_left:
             self.center_x = self.boundary_left
             self.direction = 1
-            self.scale_x = 0.8
+
+        self.scale_x = self.direction * 0.8
+
+
+class AnimatedEasyEnemy(EasyEnemy):
+    def __init__(self, textures: list, x: float, y: float):
+        super().__init__(textures[0], x, y)
+        self.textures = textures
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.5
+
+    def update_animation(self, delta_time: float):
+        self.animation_timer += delta_time
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % len(self.textures)
+            self.texture = self.textures[self.current_frame]
+
+    def update(self, delta_time: float):
+        super().update(delta_time)
+        self.update_animation(delta_time)
 
 
 class MediumEnemy(Enemy):

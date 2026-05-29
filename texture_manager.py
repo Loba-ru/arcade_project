@@ -46,3 +46,18 @@ class TextureManager:
             path = self.file_manager.get_image_path(ITEMS_DIR, frame_name)
             textures.append(arcade.load_texture(path))
         return textures
+
+    def load_enemy_textures(self, name: str, count: int):
+        """Загружает текстуры врага."""
+        textures = []
+        for i in range(count):
+            path = self.file_manager.get_image_path(
+                ENTITIES_DIR, f"{name}{i}.png"
+            )
+            try:
+                textures.append(arcade.load_texture(path))
+            except Exception as e:
+                print(
+                    f"[DEBUG]: ошибка загрузки текстуры '{name}{i}.png': {e}"
+                )
+        return textures

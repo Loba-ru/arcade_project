@@ -92,5 +92,7 @@ RUBY_IMAGE = "gem_red.png"
 COIN_IMAGE = "coin1.png"
 COIN_FRAMES = ["coin1.png", "coin2.png", "coin3.png", "coin4.png"]
 
+ENEMY_IMAGE = "slime_green0.png"
+
 # ========== РЕЖИМ ОТЛАДКИ ==========
 GAMEPLAY_USE_DUMMY = False

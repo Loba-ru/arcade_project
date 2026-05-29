@@ -138,7 +138,10 @@ class BaseLevel(arcade.View):
 
             self.enemy_list = arcade.SpriteList()
 
-            enemy = EasyEnemy(832, 178)
+            tm = self.game_manager.texture_manager
+            texture = tm.load_enemy_textures("slime_green", 2)
+            enemy = AnimatedEasyEnemy(texture, 832, 178)
+
             self.enemy_list.append(enemy)
 
         self.dust_particles = arcade.SpriteList()
@@ -688,6 +691,10 @@ class BaseLevel(arcade.View):
 
             life_lost = self.player.lose_life()
             if life_lost:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "lose_life", volume=0.5
+                    )
                 print(
                     f"[DEBUG] Урон от ловушки! Осталось жизней: {self.player.lives}"
                 )
@@ -876,6 +883,10 @@ class BaseLevel(arcade.View):
         for enemy in self.enemy_list:
             if arcade.check_for_collision(self.player, enemy):
                 if self.invincible_frames <= 0:
+                    if hasattr(self.game_manager.window, "sound_manager"):
+                        self.game_manager.window.sound_manager.play(
+                            "hit", volume=0.3
+                        )
                     self.player.take_damage(enemy.damage)
                     print(
                         f"[DEBUG] Урон от врага! Здоровье: {self.player.health}"
@@ -893,6 +904,11 @@ class BaseLevel(arcade.View):
                     if self.player.health <= 0:
                         life_lost = self.player.lose_life()
                         if life_lost:
+                            window = self.game_manager.window
+                            if hasattr(window, "sound_manager"):
+                                window.sound_manager.play(
+                                    "lose_life", volume=0.5
+                                )
                             print(
                                 f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}"
                             )
