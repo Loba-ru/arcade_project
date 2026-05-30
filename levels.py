@@ -552,6 +552,18 @@ class BaseLevel(arcade.View):
                 self.friend_activated = True
                 self.friend.activate()
 
+                for tile in self.cage_trigger_list:
+                    self._fade_out_tile(tile)
+
+                for _ in range(50):
+                    x = self.friend.center_x + random.randint(-60, 60)
+                    y = self.friend.center_y + random.randint(-60, 60)
+                    color = random.choice(
+                        [(160, 100, 60), (120, 70, 40), (200, 150, 100)]
+                    )
+                    particle = CagePiece(x, y, color)
+                    self.dust_particles.append(particle)
+
                 if self.cage_list:
                     for tile in self.cage_list[:]:
                         tile.remove_from_sprite_lists()
@@ -1088,6 +1100,14 @@ class BaseLevel(arcade.View):
 
         if hasattr(self.game_manager.window, "sound_manager"):
             self.game_manager.window.sound_manager.play("hit", volume=0.3)
+
+    def _fade_out_tile(self, tile):
+        """Плавное исчезновение тайла клетки."""
+        if tile.alpha > 0:
+            tile.alpha = max(0, tile.alpha - 25)
+            arcade.schedule(lambda dt, t=tile: self._fade_out_tile(t), 0.02)
+        else:
+            tile.remove_from_sprite_lists()
 
 
 class GroundLevel(BaseLevel):

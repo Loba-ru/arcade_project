@@ -571,3 +571,28 @@ class ExplosionEffect(arcade.SpriteCircle):
         self.alpha = int(255 * (1 - self.time_alive / self.lifetime))
         if self.time_alive >= self.lifetime:
             self.remove_from_sprite_lists()
+
+
+class CagePiece(arcade.SpriteCircle):
+    """Частица разрушения клетки."""
+
+    def __init__(self, x: float, y: float, color):
+        radius = random.randint(4, 10)
+        super().__init__(radius, color)
+        self.center_x = x
+        self.center_y = y
+        self.change_x = random.uniform(-2, 2)
+        self.change_y = random.uniform(-2, 2)
+        self.lifetime = random.uniform(0.5, 1.0)
+        self.time_alive = 0
+        self.alpha = 255
+
+    def update(self, delta_time: float):
+        self.center_x += self.change_x
+        self.center_y += self.change_y
+        self.change_x *= 0.95
+        self.change_y *= 0.95
+        self.time_alive += delta_time
+        self.alpha = int(255 * (1 - self.time_alive / self.lifetime))
+        if self.time_alive >= self.lifetime:
+            self.remove_from_sprite_lists()
