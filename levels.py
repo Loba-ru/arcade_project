@@ -85,6 +85,9 @@ class BaseLevel(arcade.View):
         self.portal_cooldown = False
         self.dead_zone_w = DEAD_ZONE_W
         self.dead_zone_h = DEAD_ZONE_H
+        self.key_dropped_from_enemy = False
+        self.enemy_total_count = 0
+        self.enemies_killed = 0
 
         self.ui_level_difficulty_text = None
         self.ui_left_text = None
@@ -223,16 +226,30 @@ class BaseLevel(arcade.View):
         if self.enemy_list:
             animated_enemies = arcade.SpriteList()
             tm = self.game_manager.texture_manager
-            for enemy_data in self.enemy_list:
-                enemy_type = enemy_data.properties.get("type")
-                name = enemy_data.properties.get("name", "slime_green")
 
-                if enemy_type == "easy_enemy":
-                    texture = tm.load_enemy_textures(name, 2)
-                    x, y = enemy_data.center_x, enemy_data.center_y
-                    animated_enemies.append(AnimatedEasyEnemy(texture, x, y))
+            if self.game_manager.has_all_gems:
+                for enemy_data in self.enemy_list:
+                    enemy_type = enemy_data.properties.get("type")
+                    if enemy_type == "easy_enemy":
+                        texture = tm.load_enemy_textures("ghost", 2)
+                        x, y = enemy_data.center_x, enemy_data.center_y
+                        animated_enemies.append(
+                            AnimatedEasyEnemy(texture, x, y)
+                        )
+                self.enemy_total_count = len(self.enemy_list)
+            else:
+                for enemy_data in self.enemy_list:
+                    enemy_type = enemy_data.properties.get("type")
+                    name = enemy_data.properties.get("name", "slime_green")
 
-                # TODO: добавить medium_enemy и hard_enemy
+                    if enemy_type == "easy_enemy":
+                        texture = tm.load_enemy_textures(name, 2)
+                        x, y = enemy_data.center_x, enemy_data.center_y
+                        animated_enemies.append(
+                            AnimatedEasyEnemy(texture, x, y)
+                        )
+
+                    # TODO: добавить medium_enemy и hard_enemy
 
             self.enemy_list = animated_enemies
         else:
@@ -544,6 +561,7 @@ class BaseLevel(arcade.View):
             self.cage_trigger_list
             and not self.friend_activated
             and self.game_manager.has_all_gems
+            and self.key_count > 0
         ):
             hits = arcade.check_for_collision_with_list(
                 self.player, self.cage_trigger_list
@@ -551,6 +569,10 @@ class BaseLevel(arcade.View):
             if hits:
                 self.friend_activated = True
                 self.friend.activate()
+
+                self.key_count -= 1
+                if hasattr(self.player, "inventory"):
+                    self.player.inventory.discard("key", 1)
 
                 for tile in self.cage_trigger_list:
                     self._fade_out_tile(tile)
@@ -730,7 +752,6 @@ class BaseLevel(arcade.View):
         self.world_camera.position = (smooth_x, smooth_y)
 
     def check_portal(self):
-        """Проверка столкновения с порталом/выходом."""
         if not self.entry_exit_list:
             return
 
@@ -750,6 +771,7 @@ class BaseLevel(arcade.View):
                 if (
                     self.level_name == "ground"
                     and self.game_manager.has_all_gems
+                    and self.friend_activated
                 ):
                     self.game_manager.in_victory_portal = True
                 else:
@@ -860,6 +882,10 @@ class BaseLevel(arcade.View):
 
     def check_door(self):
         """Проверка касания триггера перед дверью."""
+        if self.level_name == "ground" and self.game_manager.has_all_gems:
+            print("[DEBUG] check_door пропущен (ground с кристаллами)")
+            return
+
         if not self.door_list or not self.door_trigger_list:
             return
 
@@ -945,14 +971,27 @@ class BaseLevel(arcade.View):
                 return "Цель: открыть дверь"
 
         elif self.level_name == "ground":
-            if self.game_manager.has_all_gems and not self.friend_activated:
-                return "Цель: спасти друга!"
-            elif not self.door_active or self.friend_activated:
-                return "Цель: войти в портал"
-            elif self.key_count == 0:
-                return "Цель: найти ключ"
+            if not self.game_manager.has_all_gems:
+                if not self.door_active:
+                    return "Цель: войти в портал"
+                elif self.key_count == 0:
+                    return "Цель: найти ключ"
+                else:
+                    return "Цель: открыть дверь"
+
+            if self.enemies_killed < self.enemy_total_count:
+                return "Цель: победить врагов!"
+
+            if self.key_dropped_from_enemy:
+                if self.friend_activated:
+                    return "Цель: войти в портал"
+                else:
+                    if self.key_count == 0:
+                        return "Цель: подобрать ключ"
+                    else:
+                        return "Цель: спасти друга!"
             else:
-                return "Цель: открыть дверь"
+                return "Цель: победить врагов!"
 
         return "Цель: вернуться живым!"
 
@@ -971,8 +1010,12 @@ class BaseLevel(arcade.View):
 
         elif self.level_name == "ground":
             if self.game_manager.has_all_gems:
-                gems = self.player.inventory.total_gems()
-                self.ui_left_text.text = f"Драгоценности: {gems}"
+                keys = self.player.inventory.get_count("key")
+                killed = self.enemies_killed
+                total = self.enemy_total_count
+                self.ui_left_text.text = (
+                    f"Ключи: {keys} | Врагов повержено: {killed} из {total}"
+                )
             else:
                 keys = self.player.inventory.get_count("key")
                 self.ui_left_text.text = f"Ключи: {keys}"
@@ -1027,7 +1070,7 @@ class BaseLevel(arcade.View):
 
         for enemy in self.enemy_list[:]:
             if arcade.check_for_collision(self.player, enemy):
-                # Если есть все кристаллы — враг умирает, игрок неуязвим
+
                 if self.game_manager.has_all_gems:
                     if hasattr(enemy, "start_dying") and not getattr(
                         enemy, "_death_started", False
@@ -1041,12 +1084,26 @@ class BaseLevel(arcade.View):
                             )
                         print(f"[DEBUG] Враг повержен!")
                         self.game_manager.enemies_defeated += 1
+                        self.enemies_killed += 1
 
                         for _ in range(25):
                             particle = ExplosionEffect(
                                 enemy.center_x, enemy.center_y
                             )
                             self.dust_particles.append(particle)
+
+                        """
+                        if (
+                            self.enemies_killed == self.enemy_total_count
+                            and not self.key_dropped_from_enemy
+                        ):
+                            arcade.schedule(
+                                lambda dt: self._drop_key(
+                                    enemy.center_x, enemy.center_y
+                                ),
+                                1.5,
+                            )
+                        """
                     continue
 
                 # Обычная логика урона (без кристаллов)
@@ -1140,6 +1197,25 @@ class BaseLevel(arcade.View):
             arcade.schedule(lambda dt, t=tile: self._fade_out_tile(t), 0.02)
         else:
             tile.remove_from_sprite_lists()
+
+    def _drop_key(self, x, y):
+        """Создаёт ключ из поверженного врага в указанной позиции."""
+        if self.key_dropped_from_enemy:
+            return
+
+        fm = self.game_manager.window.file_manager
+        img_path = fm.get_image_path(ITEMS_DIR, KEY_IMAGE)
+        key = Key(img_path, x, y)
+
+        if self.key_list is None:
+            self.key_list = arcade.SpriteList()
+        self.key_list.append(key)
+
+        self.key_count += 1
+
+        self.key_dropped_from_enemy = True
+
+        print(f"[DEBUG] Ключ выпал в позиции ({x}, {y})")
 
 
 class GroundLevel(BaseLevel):
