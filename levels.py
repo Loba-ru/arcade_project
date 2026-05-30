@@ -964,19 +964,43 @@ class BaseLevel(arcade.View):
             self.background_list = None
 
     def update_enemies(self):
-        """Обновление врагов и проверка коллизий с игроком (отбрасывание)."""
+        """Обновление врагов и проверка коллизий с игроком."""
         if not self.enemy_list:
             return
 
         self.enemy_list.update()
 
-        for enemy in self.enemy_list:
+        for enemy in self.enemy_list[:]:
             if arcade.check_for_collision(self.player, enemy):
+                # Если есть все кристаллы — враг умирает, игрок неуязвим
+                if self.game_manager.has_all_gems:
+                    if hasattr(enemy, "start_dying") and not getattr(
+                        enemy, "_death_started", False
+                    ):
+                        enemy._death_started = True
+                        enemy.start_dying()
+
+                        if hasattr(self.game_manager.window, "sound_manager"):
+                            self.game_manager.window.sound_manager.play(
+                                "hit", volume=0.4
+                            )
+                        print(f"[DEBUG] Враг повержен!")
+                        self.game_manager.enemies_defeated += 1
+
+                        for _ in range(25):
+                            particle = ExplosionEffect(
+                                enemy.center_x, enemy.center_y
+                            )
+                            self.dust_particles.append(particle)
+                    continue
+
+                # Обычная логика урона (без кристаллов)
                 if self.invincible_frames <= 0:
                     if hasattr(self.game_manager.window, "sound_manager"):
                         self.game_manager.window.sound_manager.play(
                             "hit", volume=0.3
                         )
+
                     self.player.take_damage(enemy.damage)
                     print(
                         f"[DEBUG] Урон от врага! Здоровье: {self.player.health}"
@@ -1003,9 +1027,7 @@ class BaseLevel(arcade.View):
                                 f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}"
                             )
                             self.game_manager.lives = self.player.lives
-
                             self.respawn_player()
-
                             if not self.player.is_alive:
                                 self.pending_game_over = True
                     break

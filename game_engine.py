@@ -48,6 +48,8 @@ class MyGame:
         self.lives = PLAYER_LIVES_DEFAULT
         self.difficulty = 1
 
+        self.enemies_defeated = 0
+
     def register_level(self, name: str, level_class):
         """Регистрирует уровень в реестре."""
         self.level_registry[name] = level_class
@@ -64,8 +66,8 @@ class MyGame:
 
     def start_game(self, start_level: str = "ground"):
         """Запускает игру с указанного уровня."""
-        self.current_view = self.create_level(start_level)
-        # self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
+        # self.current_view = self.create_level(start_level)
+        self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
         self.window.show_view(self.current_view)
 
     def change_level(self, level_name: str):

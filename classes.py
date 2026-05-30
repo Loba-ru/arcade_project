@@ -20,10 +20,12 @@
 #
 # Союзники:
 # Friend (Друг игрока)
+# └── AnimatedFriend (Друг с анимацией)
 #
 # Вспомогательные классы:
 # Inventory (инвентарь игрока)
-# DustParticle (для эффекта приземления)
+# DustParticle (для эффекта приземления игрока)
+# ExplosionEffect (для эффекта взрыва врагов)
 
 import arcade
 import random
@@ -352,6 +354,17 @@ class AnimatedEasyEnemy(EasyEnemy):
         self.current_frame = 0
         self.animation_timer = 0
         self.animation_speed = 0.5
+        self.is_dying = False
+        self.death_timer = 0
+        self.death_duration = 0.3
+        self._death_started = False
+
+    def start_dying(self):
+        """Начинает процесс смерти (мигание)."""
+        self.is_dying = True
+        self.death_timer = 0
+        self.change_y = 5
+        self.change_x = random.uniform(-2, 2)
 
     def update_animation(self, delta_time: float):
         self.animation_timer += delta_time
@@ -361,6 +374,18 @@ class AnimatedEasyEnemy(EasyEnemy):
             self.texture = self.textures[self.current_frame]
 
     def update(self, delta_time: float):
+        if self.is_dying:
+            self.death_timer += delta_time
+            # Мигание
+            if int(self.death_timer * 20) % 2 == 0:
+                self.alpha = 128
+            else:
+                self.alpha = 255
+
+            if self.death_timer >= self.death_duration:
+                self.kill()
+            return
+
         super().update(delta_time)
         self.update_animation(delta_time)
 
@@ -511,4 +536,38 @@ class DustParticle(arcade.SpriteCircle):
         self.time_alive += delta_time
 
         if self.time_alive >= self.lifetime or self.alpha <= 0:
+            self.remove_from_sprite_lists()
+
+
+class ExplosionEffect(arcade.SpriteCircle):
+    """Частица взрыва для эффекта смерти врага."""
+
+    def __init__(self, x: float, y: float):
+        color = random.choice(
+            [
+                (255, 80, 80),
+                (80, 255, 80),
+                (80, 80, 255),
+                arcade.color.GOLD,
+                arcade.color.ORANGE_RED,
+            ]
+        )
+        radius = random.randint(3, 8)
+        super().__init__(radius, color)
+        self.center_x = x
+        self.center_y = y
+        self.change_x = random.uniform(-2.5, 2.5)
+        self.change_y = random.uniform(-2.5, 2.5)
+        self.lifetime = random.uniform(0.4, 0.8)
+        self.time_alive = 0
+        self.alpha = 255
+
+    def update(self, delta_time: float):
+        self.center_x += self.change_x
+        self.center_y += self.change_y
+        self.change_x *= 0.95
+        self.change_y *= 0.95
+        self.time_alive += delta_time
+        self.alpha = int(255 * (1 - self.time_alive / self.lifetime))
+        if self.time_alive >= self.lifetime:
             self.remove_from_sprite_lists()

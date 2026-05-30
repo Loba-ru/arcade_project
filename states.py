@@ -503,13 +503,14 @@ class GameplayView(GameState):
     def on_win(self):
         player = self.game_manager.player if self.game_manager else None
         coins = player.inventory.get_count("coin") if player else 0
+        kills = self.game_manager.enemies_defeated if self.game_manager else 0
         self.game_manager = None
         self.state_manager.change_state(
             ResultView(
                 self.state_manager,
                 won=True,
                 coins=coins,
-                kills=0,
+                kills=kills,
                 difficulty=self.difficulty,
             )
         )
@@ -517,13 +518,14 @@ class GameplayView(GameState):
     def on_lose(self):
         player = self.game_manager.player if self.game_manager else None
         coins = player.inventory.get_count("coin") if player else 0
+        kills = self.game_manager.enemies_defeated if self.game_manager else 0
         self.game_manager = None
         self.state_manager.change_state(
             ResultView(
                 self.state_manager,
                 won=False,
                 coins=coins,
-                kills=0,
+                kills=kills,
                 difficulty=self.difficulty,
             )
         )
@@ -597,7 +599,7 @@ class ResultView(GameState):
                 batch=self.batch,
             )
             self.kills_text = arcade.Text(
-                f"Убито врагов: {self.kills}",
+                f"Врагов повержено: {self.kills}",
                 w // 2,
                 h // 2,
                 arcade.color.WHITE,
@@ -621,7 +623,7 @@ class ResultView(GameState):
                 arcade.color.GOLD if self.won else arcade.color.RED
             )
             self.coins_text.text = f"Собрано монет: {self.coins}"
-            self.kills_text.text = f"Убито врагов: {self.kills}"
+            self.kills_text.text = f"Врагов повержено: {self.kills}"
 
         # Текст сложности
         difficulty_names = ["Лёгкая", "Средняя", "Тяжёлая"]
