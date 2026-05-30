@@ -584,6 +584,38 @@ class BaseLevel(arcade.View):
         )
         self.player.update_animation(delta_time)
 
+        if self.game_manager.has_all_gems and abs(self.player.change_x) > 0:
+            colors = [
+                (255, 80, 80, 180),
+                (80, 255, 80, 180),
+                (80, 80, 255, 180),
+            ]
+            color = random.choice(colors)
+
+            if self.player.change_x > 0:
+                offset_x = -30
+            else:
+                offset_x = 30
+
+            particle = TrailParticle(
+                self.player.center_x + offset_x,
+                self.player.center_y - 25,
+                color,
+            )
+            self.dust_particles.append(particle)
+
+            if random.random() < 0.5:
+                if self.player.change_x > 0:
+                    offset_x2 = -50
+                else:
+                    offset_x2 = 50
+                particle2 = TrailParticle(
+                    self.player.center_x + offset_x2,
+                    self.player.center_y - 15,
+                    color,
+                )
+                self.dust_particles.append(particle2)
+
         if self.friend_list and self.friend.is_active:
             x, y = self.player.center_x, self.player.center_y
             self.friend.follow_player(x, y, offset_x=50, offset_y=0)
@@ -913,16 +945,16 @@ class BaseLevel(arcade.View):
                 return "Цель: открыть дверь"
 
         elif self.level_name == "ground":
-            if self.game_manager.has_all_gems:
-                return "Цель: вернуться живым!"
-            elif not self.door_active:
+            if self.game_manager.has_all_gems and not self.friend_activated:
+                return "Цель: спасти друга!"
+            elif not self.door_active or self.friend_activated:
                 return "Цель: войти в портал"
             elif self.key_count == 0:
                 return "Цель: найти ключ"
             else:
                 return "Цель: открыть дверь"
 
-        return "Цель: продолжить путь"
+        return "Цель: вернуться живым!"
 
     def update_ui_left_text(self):
         """Обновляет текст в левом нижнем углу в зависимости от уровня."""

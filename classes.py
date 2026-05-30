@@ -5,10 +5,11 @@
 # Entity (базовый класс)
 # ├── Player (игрок)
 # |   └── AnimatedPlayer (игрок с анимацией)
-# └── Enemy (враг)
-#     ├── EasyEnemy
-#     ├── MediumEnemy
-#     └── HardEnemy
+# └── Enemy (Враг)
+#     ├── EasyEnemy (Лёгкий враг)
+#     |   └── AnimatedEasyEnemy (Лёгкий враг с анимацией)
+#     ├── MediumEnemy (Средний враг)
+#     └── HardEnemy (Тяжёлый враг)
 
 # Иерархия классов внутриигровых предметов:
 # BaseItem (базовый класс)
@@ -17,15 +18,18 @@
 # ├── Ruby (Рубин)
 # ├── Key (Ключ)
 # └── Coin (Монета)
-#
+#     └── AnimatedCoin (Монета с анимацией сбора)
+
 # Союзники:
 # Friend (Друг игрока)
 # └── AnimatedFriend (Друг с анимацией)
-#
+
 # Вспомогательные классы:
-# Inventory (инвентарь игрока)
-# DustParticle (для эффекта приземления игрока)
-# ExplosionEffect (для эффекта взрыва врагов)
+# Inventory (Инвентарь игрока)
+# DustParticle (Эффект приземления игрока)
+# ExplosionEffect (Эффект взрыва при уничтожении врагов)
+# CagePiece (Эффект разрушения клетки)
+# TrailParticle (Эффект шлейфа за игроком после получения силы)
 
 import arcade
 import random
@@ -594,5 +598,27 @@ class CagePiece(arcade.SpriteCircle):
         self.change_y *= 0.95
         self.time_alive += delta_time
         self.alpha = int(255 * (1 - self.time_alive / self.lifetime))
+        if self.time_alive >= self.lifetime:
+            self.remove_from_sprite_lists()
+
+
+class TrailParticle(arcade.SpriteCircle):
+    """Частица шлейфа (след силы) за игроком."""
+
+    def __init__(self, x: float, y: float, color):
+        radius = random.randint(3, 6)
+        super().__init__(radius, color)
+        self.center_x = x
+        self.center_y = y
+        self.change_x = random.uniform(-0.5, 0.5)
+        self.change_y = random.uniform(-0.5, 0.5)
+        self.lifetime = random.uniform(0.3, 0.6)
+        self.time_alive = 0
+        self.alpha = 180
+
+    def update(self, delta_time: float):
+        self.center_x += self.change_x
+        self.center_y += self.change_y
+        self.time_alive += delta_time
         if self.time_alive >= self.lifetime:
             self.remove_from_sprite_lists()

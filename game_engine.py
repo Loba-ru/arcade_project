@@ -66,8 +66,8 @@ class MyGame:
 
     def start_game(self, start_level: str = "ground"):
         """Запускает игру с указанного уровня."""
-        # self.current_view = self.create_level(start_level)
-        self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
+        self.current_view = self.create_level(start_level)
+        # self.current_view = self.create_level("sky")  # TEST: ТОЛЬКО ДЛЯ ТЕСТА!
         self.window.show_view(self.current_view)
 
     def change_level(self, level_name: str):
