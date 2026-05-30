@@ -554,6 +554,17 @@ class ResultView(GameState):
 
     def on_show(self):
         print(f"[State] Переход в ResultView (Победа: {self.won})")
+
+        if hasattr(self.state_manager.window, "sound_manager"):
+            if self.won:
+                self.state_manager.window.sound_manager.play(
+                    "victory", volume=0.7
+                )
+            else:
+                self.state_manager.window.sound_manager.play(
+                    "game_over", volume=0.5
+                )
+
         arcade.set_background_color(arcade.color.AMAZON)
         if self.state_manager.gui_manager:
             self.state_manager.gui_manager.hide_gui()

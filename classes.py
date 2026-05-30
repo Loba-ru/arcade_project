@@ -237,7 +237,7 @@ class EasyEnemy(Enemy):
     def __init__(self, image_path: str, x: float, y: float):
         super().__init__(
             image_path,
-            0.8,
+            scale=1.0,
             health=1,
             speed=80,
             damage=20,

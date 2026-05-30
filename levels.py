@@ -75,6 +75,9 @@ class BaseLevel(arcade.View):
         self.total_gems = 0
         self.dust_particles = None
         self.was_jumping = False
+        self.footstep_timer = 0
+        self.footstep_interval = 0.35
+        self.portal_cooldown = False
         self.dead_zone_w = DEAD_ZONE_W
         self.dead_zone_h = DEAD_ZONE_H
 
@@ -136,6 +139,8 @@ class BaseLevel(arcade.View):
             else:
                 self.key_list = None
 
+            # TODO: будет удалено после тестирования MediumEnemy и HardEnemy
+            """
             self.enemy_list = arcade.SpriteList()
 
             tm = self.game_manager.texture_manager
@@ -143,7 +148,7 @@ class BaseLevel(arcade.View):
             enemy = AnimatedEasyEnemy(texture, 832, 178)
 
             self.enemy_list.append(enemy)
-
+            """
         self.dust_particles = arcade.SpriteList()
 
         self.collected_coin_list = arcade.SpriteList()
@@ -196,6 +201,25 @@ class BaseLevel(arcade.View):
                 x, y = coin.center_x, coin.center_y
                 animated_coins.append(AnimatedCoin(texture, x, y))
             self.coin_list = animated_coins
+
+        self.enemy_list = self.tile_map.sprite_lists.get("enemies")
+        if self.enemy_list:
+            animated_enemies = arcade.SpriteList()
+            tm = self.game_manager.texture_manager
+            for enemy_data in self.enemy_list:
+                enemy_type = enemy_data.properties.get("type")
+                name = enemy_data.properties.get("name", "slime_green")
+
+                if enemy_type == "easy_enemy":
+                    texture = tm.load_enemy_textures(name, 2)
+                    x, y = enemy_data.center_x, enemy_data.center_y
+                    animated_enemies.append(AnimatedEasyEnemy(texture, x, y))
+
+                # TODO: добавить medium_enemy и hard_enemy
+
+            self.enemy_list = animated_enemies
+        else:
+            self.enemy_list = arcade.SpriteList()
 
     def get_next_spawn_point(self):
         """Возвращает точку спавна для следующего уровня."""
@@ -462,6 +486,15 @@ class BaseLevel(arcade.View):
 
         self.physics_engine.update()
 
+        if abs(self.player.change_x) > 0 and self.physics_engine.can_jump():
+            self.footstep_timer += delta_time
+            if self.footstep_timer >= self.footstep_interval:
+                self.footstep_timer = 0
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "footstep", volume=0.3
+                    )
+
         on_ground = self.physics_engine.can_jump()
         if self.was_jumping and on_ground:
             self.create_dust_effect()
@@ -607,6 +640,10 @@ class BaseLevel(arcade.View):
                 self.game_manager.check_victory_from_portal()
         else:
             if hits:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "portal", volume=0.7
+                    )
                 if (
                     self.level_name == "ground"
                     and self.game_manager.has_all_gems
@@ -741,6 +778,11 @@ class BaseLevel(arcade.View):
             can_open = can_open and self.game_manager.has_all_gems
 
         if can_open:
+            if hasattr(self.game_manager.window, "sound_manager"):
+                self.game_manager.window.sound_manager.play(
+                    "door_open", volume=0.7
+                )
+
             print("[DEBUG] Дверь открыта! Ключ использован.")
 
             self.key_count -= 1

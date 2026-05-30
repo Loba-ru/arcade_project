@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="16" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="17" nextobjectid="7">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="15" name="coins" width="30" height="15">
   <data encoding="base64" compression="zlib">
-   eJxjYBjZYCoONql60cWn4pEfBdgBofCiRnjSOk6omYaoZccooD1AjxNapeXBln6HCwAAR1QKew==
+   eJxjYBjZYCoONql6sYmTat5IB4TCixrhSes4Icd8bHrwiY2mq8EH0OOEVml5MKbf4QAA6f4Kew==
   </data>
  </layer>
  <layer id="1" name="platform" width="30" height="15">
@@ -71,6 +71,26 @@
    <properties>
     <property name="action" value="open_door"/>
     <property name="type" value="trigger"/>
+   </properties>
+  </object>
+ </objectgroup>
+ <objectgroup id="16" name="enemies">
+  <object id="4" gid="150" x="768" y="1792" width="128" height="128">
+   <properties>
+    <property name="name" value="slime_green"/>
+    <property name="type" value="easy_enemy"/>
+   </properties>
+  </object>
+  <object id="5" gid="150" x="512" y="512" width="128" height="128">
+   <properties>
+    <property name="name" value="slime_green"/>
+    <property name="type" value="easy_enemy"/>
+   </properties>
+  </object>
+  <object id="6" gid="150" x="3328" y="1152" width="128" height="128">
+   <properties>
+    <property name="name" value="slime_green"/>
+    <property name="type" value="easy_enemy"/>
    </properties>
   </object>
  </objectgroup>
