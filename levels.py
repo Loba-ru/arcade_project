@@ -65,10 +65,11 @@ class BaseLevel(arcade.View):
         self.cage_trigger_list = None
         self.cage_list = None
         self.all_walls = None
+        self.center_hint_background_list = None
 
         self.door_active = True
         self.is_paused = False
-        self.hint_timer = 0
+        self.central_hint_timer = 0
         self.key_count = 0
         self.up_pressed = False
         self.down_pressed = False
@@ -92,7 +93,8 @@ class BaseLevel(arcade.View):
         self.ui_level_difficulty_text = None
         self.ui_left_text = None
         self.ui_right_text = None
-        self.portal_hint_text = None
+        self.center_hint_text = None
+        self.center_hint_background = None
         self.ui_coin_text = None
         self.heart_texts = None
         self.test_text = None
@@ -349,15 +351,26 @@ class BaseLevel(arcade.View):
             anchor_x="right",
             batch=self.batch,
         )
-        self.portal_hint_text = arcade.Text(
+        self.center_hint_text = arcade.Text(
             "",
             screen_width // 2,
             screen_height // 2,
             arcade.color.WHITE,
-            18,
+            24,
             anchor_x="center",
+            anchor_y="center",
+            bold=True,
             batch=self.batch,
         )
+        texture = arcade.Texture.create_empty(
+            "hint_bg", size=(600, 60), color=(0, 0, 0, 50)
+        )
+        self.center_hint_background = arcade.Sprite(texture)
+        self.center_hint_background.center_x = screen_width // 2
+        self.center_hint_background.center_y = screen_height // 2
+        self.center_hint_background_list = arcade.SpriteList()
+        self.center_hint_background_list.append(self.center_hint_background)
+
         coin = self.player.inventory.get_count("coin") if self.player else 0
         self.ui_coin_text = arcade.Text(
             f"Монеты: {coin}",
@@ -391,6 +404,13 @@ class BaseLevel(arcade.View):
             anchor_x="center",
             batch=self.batch,
         )
+        level_names = {
+            "ground": "УРОВЕНЬ 1. Земля",
+            "dungeon": "УРОВЕНЬ 2. Подземелье",
+            "sky": "УРОВЕНЬ 3. Небо",
+        }
+        level_display = level_names.get(self.level_name, self.level_name)
+        self.show_central_hint(level_display)
 
     def resize_gui(self, screen_width, screen_height):
         """Пересчёт позиций GUI при изменении размера окна."""
@@ -410,9 +430,12 @@ class BaseLevel(arcade.View):
             self.ui_right_text.x = screen_width - 20
             self.ui_right_text.y = 20
 
-        if self.portal_hint_text:
-            self.portal_hint_text.x = screen_width // 2
-            self.portal_hint_text.y = screen_height // 2
+        if self.center_hint_text:
+            self.center_hint_text.x = screen_width // 2
+            self.center_hint_text.y = screen_height // 2
+        if self.center_hint_background:
+            self.center_hint_background.center_x = screen_width // 2
+            self.center_hint_background.center_y = screen_height // 2
 
         if self.heart_texts:
             for i, heart in enumerate(self.heart_texts):
@@ -487,6 +510,12 @@ class BaseLevel(arcade.View):
 
     def draw_gui(self):
         """Отрисовка GUI."""
+        if (
+            self.center_hint_text
+            and self.center_hint_text.text
+            and self.center_hint_background_list
+        ):
+            self.center_hint_background_list.draw()
         self.batch.draw()
 
     def on_update(self, delta_time):
@@ -511,10 +540,10 @@ class BaseLevel(arcade.View):
 
         self.update_ui_left_text()
 
-        if self.hint_timer > 0:
-            self.hint_timer -= 1
-            if self.hint_timer == 0:
-                self.clear_portal_hint()
+        if self.central_hint_timer > 0:
+            self.central_hint_timer -= 1
+            if self.central_hint_timer == 0:
+                self.clear_central_hint()
 
         if self.physics_engine.is_on_ladder():
             if self.up_pressed and not self.down_pressed:
@@ -606,37 +635,7 @@ class BaseLevel(arcade.View):
         )
         self.player.update_animation(delta_time)
 
-        if self.game_manager.has_all_gems and abs(self.player.change_x) > 0:
-            colors = [
-                (255, 80, 80, 180),
-                (80, 255, 80, 180),
-                (80, 80, 255, 180),
-            ]
-            color = random.choice(colors)
-
-            if self.player.change_x > 0:
-                offset_x = -30
-            else:
-                offset_x = 30
-
-            particle = TrailParticle(
-                self.player.center_x + offset_x,
-                self.player.center_y - 25,
-                color,
-            )
-            self.dust_particles.append(particle)
-
-            if random.random() < 0.5:
-                if self.player.change_x > 0:
-                    offset_x2 = -50
-                else:
-                    offset_x2 = 50
-                particle2 = TrailParticle(
-                    self.player.center_x + offset_x2,
-                    self.player.center_y - 15,
-                    color,
-                )
-                self.dust_particles.append(particle2)
+        self.create_trail_effect()
 
         if self.friend_list and self.friend.is_active:
             x, y = self.player.center_x, self.player.center_y
@@ -666,6 +665,7 @@ class BaseLevel(arcade.View):
                 if self.player.inventory.total_gems() >= self.total_gems:
                     self.game_manager.has_all_gems = True
                     print("[DEBUG] Все драгоценности собраны!")
+                    self.show_central_hint("Невосприимчивость к врагам!")
 
         if self.key_list:
             key_hit = arcade.check_for_collision_with_list(
@@ -752,6 +752,15 @@ class BaseLevel(arcade.View):
         self.world_camera.position = (smooth_x, smooth_y)
 
     def check_portal(self):
+        """
+        print(
+            f"[PORTAL] check_portal вызван на уровне {self.level_name}, "
+            f"has_all_gems={self.game_manager.has_all_gems}, "
+            f"friend_activated={self.friend_activated}, "
+            f"in_victory_portal={self.game_manager.in_victory_portal}"
+        )
+        """
+
         if not self.entry_exit_list:
             return
 
@@ -771,22 +780,22 @@ class BaseLevel(arcade.View):
                 if (
                     self.level_name == "ground"
                     and self.game_manager.has_all_gems
-                    and self.friend_activated
+                    # and self.friend_activated
                 ):
                     self.game_manager.in_victory_portal = True
                 else:
                     self.game_manager.change_level(self.next_level_name)
 
-    def show_portal_hint(self, message: str):
-        """Показать подсказку у портала."""
-        if self.portal_hint_text:
-            self.portal_hint_text.text = message
-            self.hint_timer = 120
+    def show_central_hint(self, message: str):
+        """Показать подсказку в центре экрана"""
+        if self.center_hint_text:
+            self.center_hint_text.text = message
+            self.central_hint_timer = 120
 
-    def clear_portal_hint(self):
-        """Очистить подсказку у портала."""
-        if self.portal_hint_text:
-            self.portal_hint_text.text = ""
+    def clear_central_hint(self):
+        """Очистить подсказку в центре экрана."""
+        if self.center_hint_text:
+            self.center_hint_text.text = ""
 
     def reset_level(self):
         """Сброс и пересоздание уровня."""
@@ -926,9 +935,9 @@ class BaseLevel(arcade.View):
             self.door_active = False
         else:
             if self.key_count == 0:
-                self.show_portal_hint("Нужен ключ!")
+                self.show_central_hint("Нужен ключ!")
             elif not self.game_manager.has_all_gems:
-                self.show_portal_hint("Нужны все драгоценности!")
+                self.show_central_hint("Нужны все драгоценности!")
 
     def update_hurt_effect(self):
         """Обновление эффекта получения урона (заморозка и мигание)."""
@@ -1026,6 +1035,68 @@ class BaseLevel(arcade.View):
             particle = DustParticle(self.player.center_x, self.player.bottom)
             self.dust_particles.append(particle)
 
+    def create_trail_effect(self):
+        """Создаёт шлейф за игроком в зависимости от собранных камней."""
+        total_gems = self.player.inventory.total_gems()
+        if total_gems == 0 or abs(self.player.change_x) == 0:
+            return
+
+        colors = []
+
+        base_colors = [
+            (255, 215, 0, 180),  # GOLD
+            (255, 140, 0, 180),  # ORANGE_RED
+            (200, 200, 200, 180),  # Светло-серый
+        ]
+
+        gem_colors = []
+        if self.player.inventory.has("ruby"):
+            gem_colors.append((255, 80, 80, 180))  # Красный
+        if self.player.inventory.has("emerald"):
+            gem_colors.append((80, 255, 80, 180))  # Зелёный
+        if self.player.inventory.has("sapphire"):
+            gem_colors.append((80, 80, 255, 180))  # Синий
+
+        # Формируем палитру в зависимости от количества камней
+        if total_gems == 1:
+            colors = gem_colors + [random.choice(base_colors)]
+        elif total_gems == 2:
+            colors = gem_colors + [random.choice(base_colors)]
+        else:  # total_gems == 3
+            colors = gem_colors + base_colors
+
+        if not colors:
+            return
+
+        color = random.choice(colors)
+
+        # Основная частица
+        if self.player.change_x > 0:
+            offset_x = -30
+        else:
+            offset_x = 30
+
+        particle = TrailParticle(
+            self.player.center_x + offset_x,
+            self.player.center_y - 25,
+            color,
+        )
+        self.dust_particles.append(particle)
+
+        # Вторая частица с вероятностью 50%
+        if random.random() < 0.5:
+            if self.player.change_x > 0:
+                offset_x2 = -50
+            else:
+                offset_x2 = 50
+            color2 = random.choice(colors) if len(colors) > 1 else color
+            particle2 = TrailParticle(
+                self.player.center_x + offset_x2,
+                self.player.center_y - 15,
+                color2,
+            )
+            self.dust_particles.append(particle2)
+
     def set_background(self, bg_name=None, color=None):
         """Установка фона уровня (текстура или цвет)."""
         if bg_name:
@@ -1072,38 +1143,34 @@ class BaseLevel(arcade.View):
             if arcade.check_for_collision(self.player, enemy):
 
                 if self.game_manager.has_all_gems:
-                    if hasattr(enemy, "start_dying") and not getattr(
-                        enemy, "_death_started", False
-                    ):
-                        enemy._death_started = True
-                        enemy.start_dying()
-
-                        if hasattr(self.game_manager.window, "sound_manager"):
-                            self.game_manager.window.sound_manager.play(
-                                "hit", volume=0.4
-                            )
-                        print(f"[DEBUG] Враг повержен!")
-                        self.game_manager.enemies_defeated += 1
-                        self.enemies_killed += 1
-
-                        for _ in range(25):
-                            particle = ExplosionEffect(
-                                enemy.center_x, enemy.center_y
-                            )
-                            self.dust_particles.append(particle)
-
-                        """
-                        if (
-                            self.enemies_killed == self.enemy_total_count
-                            and not self.key_dropped_from_enemy
+                    if self.level_name == "ground":
+                        if hasattr(enemy, "start_dying") and not getattr(
+                            enemy, "_death_started", False
                         ):
-                            arcade.schedule(
-                                lambda dt: self._drop_key(
+                            enemy._death_started = True
+                            enemy.start_dying()
+
+                            if hasattr(
+                                self.game_manager.window, "sound_manager"
+                            ):
+                                self.game_manager.window.sound_manager.play(
+                                    "hit", volume=0.4
+                                )
+                            print(f"[DEBUG] Враг повержен!")
+                            self.game_manager.enemies_defeated += 1
+                            self.enemies_killed += 1
+
+                            for _ in range(25):
+                                particle = ExplosionEffect(
                                     enemy.center_x, enemy.center_y
-                                ),
-                                1.5,
-                            )
-                        """
+                                )
+                                self.dust_particles.append(particle)
+
+                            if (
+                                self.enemies_killed == self.enemy_total_count
+                                and not self.key_dropped_from_enemy
+                            ):
+                                self._drop_key(enemy.center_x, enemy.center_y)
                     continue
 
                 # Обычная логика урона (без кристаллов)
@@ -1199,23 +1266,24 @@ class BaseLevel(arcade.View):
             tile.remove_from_sprite_lists()
 
     def _drop_key(self, x, y):
-        """Создаёт ключ из поверженного врага в указанной позиции."""
+        """Создаёт ключ из поверженного врага."""
         if self.key_dropped_from_enemy:
             return
 
+        self.key_dropped_from_enemy = True
+
         fm = self.game_manager.window.file_manager
         img_path = fm.get_image_path(ITEMS_DIR, KEY_IMAGE)
-        key = Key(img_path, x, y)
+
+        key = Key(img_path, x, y + 64)
 
         if self.key_list is None:
             self.key_list = arcade.SpriteList()
         self.key_list.append(key)
 
-        self.key_count += 1
+        print(f"[DEBUG] Ключ выпал в позиции ({x}, {y + 80})")
 
-        self.key_dropped_from_enemy = True
-
-        print(f"[DEBUG] Ключ выпал в позиции ({x}, {y})")
+        self.show_central_hint("Выпал ключ от клетки!")
 
 
 class GroundLevel(BaseLevel):

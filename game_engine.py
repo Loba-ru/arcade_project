@@ -72,6 +72,7 @@ class MyGame:
 
     def change_level(self, level_name: str):
         """Переключает на другой уровень."""
+        print(f"[GAME] change_level вызван: {level_name}")
         self.current_view = self.create_level(level_name)
         self.window.show_view(self.current_view)
 
