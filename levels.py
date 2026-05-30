@@ -63,7 +63,7 @@ class BaseLevel(arcade.View):
         self.block_list = None
         self.friend_list = None
         self.cage_trigger_list = None
-
+        self.cage_list = None
         self.all_walls = None
 
         self.door_active = True
@@ -200,6 +200,7 @@ class BaseLevel(arcade.View):
             self.cage_trigger_list = self.tile_map.sprite_lists.get(
                 "cage_trigger"
             )
+            self.cage_list = self.tile_map.sprite_lists.get("cage")
         else:
             self.start_list = self.tile_map.sprite_lists.get("startA")
             self.entry_exit_list = self.tile_map.sprite_lists.get("entry_exit")
@@ -279,6 +280,9 @@ class BaseLevel(arcade.View):
 
         if self.door_active:
             self.all_walls.extend(self.door_list)
+
+        if self.cage_list:
+            self.all_walls.extend(self.cage_list)
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(
             self.player,
@@ -547,9 +551,16 @@ class BaseLevel(arcade.View):
             if hits:
                 self.friend_activated = True
                 self.friend.activate()
+
+                if self.cage_list:
+                    for tile in self.cage_list[:]:
+                        tile.remove_from_sprite_lists()
+                    self.cage_list = None
+
                 for trigger in self.cage_trigger_list[:]:
                     trigger.remove_from_sprite_lists()
                 self.cage_trigger_list = None
+
                 if hasattr(self.game_manager.window, "sound_manager"):
                     self.game_manager.window.sound_manager.play(
                         "door_open", volume=0.7
