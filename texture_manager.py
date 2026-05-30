@@ -39,6 +39,27 @@ class TextureManager:
 
         return textures
 
+    def load_friend_textures(self):
+        """Загружает текстуры для анимированного союзника."""
+        textures = {}
+
+        # Idle текстура
+        idle_path = self.file_manager.get_image_path(
+            ENTITIES_DIR, "friend_idle.png"
+        )
+        textures["idle"] = [arcade.load_texture(idle_path)]
+
+        # Текстуры ходьбы
+        walk_frames = []
+        for i in range(8):
+            path = self.file_manager.get_image_path(
+                ENTITIES_DIR, f"friend_walk{i}.png"
+            )
+            walk_frames.append(arcade.load_texture(path))
+        textures["walk"] = walk_frames
+
+        return textures
+
     def load_coin_textures(self):
         """Загружает текстуры для анимированной монеты."""
         textures = []

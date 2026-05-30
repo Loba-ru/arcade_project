@@ -667,7 +667,7 @@ class ResultView(GameState):
                 self.state_manager.gui_manager.hide_gui()
             self.state_manager.change_state(StartView(self.state_manager))
         elif key == arcade.key.ESCAPE:
-            arcade.close_window()
+            arcade.exit()
 
     def on_key_release(self, key: int, modifiers: int):
         pass

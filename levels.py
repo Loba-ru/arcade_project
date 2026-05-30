@@ -36,6 +36,9 @@ class BaseLevel(arcade.View):
         self.physics_engine = None
         self.tile_map = None
         self.player = None
+        self.friend = None
+        self.friend_cage = None
+        self.friend_activated = False
 
         self.player_list = None
         self.enemy_list = None
@@ -58,6 +61,8 @@ class BaseLevel(arcade.View):
         self.door_list = None
         self.door_trigger_list = None
         self.block_list = None
+        self.friend_list = None
+        self.cage_trigger_list = None
 
         self.all_walls = None
 
@@ -139,6 +144,14 @@ class BaseLevel(arcade.View):
             else:
                 self.key_list = None
 
+            self.friend_list = arcade.SpriteList()
+
+            x, y = FRIEND_SPAWN_GROUND
+            texture = self.game_manager.texture_manager.load_friend_textures()
+            self.friend = AnimatedFriend(texture, x, y)
+
+            self.friend_list.append(self.friend)
+
             # TODO: будет удалено после тестирования MediumEnemy и HardEnemy
             """
             self.enemy_list = arcade.SpriteList()
@@ -184,6 +197,9 @@ class BaseLevel(arcade.View):
                     "entry_exitB"
                 )
                 self.block_list = self.tile_map.sprite_lists.get("blockB")
+            self.cage_trigger_list = self.tile_map.sprite_lists.get(
+                "cage_trigger"
+            )
         else:
             self.start_list = self.tile_map.sprite_lists.get("startA")
             self.entry_exit_list = self.tile_map.sprite_lists.get("entry_exit")
@@ -436,6 +452,12 @@ class BaseLevel(arcade.View):
         if self.enemy_list:
             self.enemy_list.draw()
 
+        if self.friend_list:
+            self.friend_list.draw()
+
+        if self.cage_trigger_list:
+            self.cage_trigger_list.draw()
+
         if self.dust_particles:
             self.dust_particles.draw()
 
@@ -512,11 +534,37 @@ class BaseLevel(arcade.View):
 
         self.update_enemies()
 
+        self.check_cage_collision()
+
+        if (
+            self.cage_trigger_list
+            and not self.friend_activated
+            and self.game_manager.has_all_gems
+        ):
+            hits = arcade.check_for_collision_with_list(
+                self.player, self.cage_trigger_list
+            )
+            if hits:
+                self.friend_activated = True
+                self.friend.activate()
+                for trigger in self.cage_trigger_list[:]:
+                    trigger.remove_from_sprite_lists()
+                self.cage_trigger_list = None
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "door_open", volume=0.7
+                    )
+
         self.player.is_walking = (
             self.player.change_x != 0
             and not self.physics_engine.is_on_ladder()
         )
         self.player.update_animation(delta_time)
+
+        if self.friend_list and self.friend.is_active:
+            x, y = self.player.center_x, self.player.center_y
+            self.friend.follow_player(x, y, offset_x=50, offset_y=0)
+            self.friend.update_animation(delta_time)
 
         self.update_camera()
 
@@ -588,7 +636,7 @@ class BaseLevel(arcade.View):
                 self.game_manager.on_lose_callback()
             else:
                 print("[DEBUG] Game Over! Выход...")
-                arcade.close_window()
+                arcade.exit()
             self.pending_game_over = False
 
     def update_camera(self):
@@ -961,6 +1009,52 @@ class BaseLevel(arcade.View):
                             if not self.player.is_alive:
                                 self.pending_game_over = True
                     break
+
+    def check_cage_collision(self):
+        """Проверка столкновения с клеткой (отталкивание, если нет кристаллов)."""
+        if not self.cage_trigger_list:
+            return
+
+        if self.game_manager.has_all_gems:
+            return
+
+        hits = arcade.check_for_collision_with_list(
+            self.player, self.cage_trigger_list
+        )
+        if not hits:
+            return
+
+        if self.invincible_frames > 0:
+            return
+
+        self.player.take_damage(20)
+        print(f"[DEBUG] Урон от клетки! Здоровье: {self.player.health}")
+
+        self.player.change_x = -8
+        self.player.change_y = 5
+
+        if self.player.center_x < hits[0].center_x + 20:
+            self.player.center_x = hits[0].center_x - 50
+
+        self.invincible_frames = 20
+        self.hurt_flash_timer = 20
+
+        # ДОБАВИТЬ ПРОВЕРКУ ПОТЕРИ ЖИЗНИ
+        if self.player.health <= 0:
+            life_lost = self.player.lose_life()
+            if life_lost:
+                if hasattr(self.game_manager.window, "sound_manager"):
+                    self.game_manager.window.sound_manager.play(
+                        "lose_life", volume=0.5
+                    )
+                print(f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}")
+                self.game_manager.lives = self.player.lives
+                self.respawn_player()
+                if not self.player.is_alive:
+                    self.pending_game_over = True
+
+        if hasattr(self.game_manager.window, "sound_manager"):
+            self.game_manager.window.sound_manager.play("hit", volume=0.3)
 
 
 class GroundLevel(BaseLevel):

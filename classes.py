@@ -18,6 +18,9 @@
 # ├── Key (Ключ)
 # └── Coin (Монета)
 #
+# Союзники:
+# Friend (Друг игрока)
+#
 # Вспомогательные классы:
 # Inventory (инвентарь игрока)
 # DustParticle (для эффекта приземления)
@@ -208,6 +211,87 @@ class AnimatedPlayer(Player):
                 self.texture = base_texture.flip_horizontally()
             else:
                 self.texture = base_texture
+
+
+class Friend(arcade.Sprite):
+    """Союзник, который следует за игроком."""
+
+    def __init__(
+        self, image_path: str, x: float, y: float, scale: float = 1.0
+    ):
+        super().__init__(image_path, scale=scale)
+        self.center_x = x
+        self.center_y = y
+        self.is_active = False
+
+    def activate(self):
+        """Активация союзника (освобождение из клетки)."""
+        self.is_active = True
+
+    def follow_player(self, player_x, player_y, offset_x=-50, offset_y=0):
+        """Следование за игроком с отступом."""
+        if self.is_active:
+            self.center_x = player_x + offset_x
+            self.center_y = player_y + offset_y
+
+
+class AnimatedFriend(Friend):
+    """Союзник с анимацией ходьбы."""
+
+    def __init__(self, textures: dict, x: float, y: float, scale: float = 1.0):
+        idle_texture = textures.get("idle", [None])[0]
+        super().__init__(idle_texture, x, y, scale)
+        self.textures = textures
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.12
+        self.last_direction = 1
+        self.is_moving = False
+
+    def update_animation(self, delta_time: float):
+        """Обновляет анимацию в зависимости от движения."""
+        if not self.is_active:
+            return
+
+        if not self.is_moving:
+            # Стоим на месте — idle
+            idle_texture = self.textures["idle"][0]
+            if self.last_direction == -1:
+                self.texture = idle_texture.flip_horizontally()
+            else:
+                self.texture = idle_texture
+            return
+
+        # Идём — анимация ходьбы
+        walk_textures = self.textures["walk"]
+        self.animation_timer += delta_time
+        if self.animation_timer >= self.animation_speed:
+            self.animation_timer = 0
+            self.current_frame = (self.current_frame + 1) % len(walk_textures)
+            base_texture = walk_textures[self.current_frame]
+
+            if self.last_direction == -1:
+                self.texture = base_texture.flip_horizontally()
+            else:
+                self.texture = base_texture
+
+    def follow_player(self, player_x, player_y, offset_x=-50, offset_y=0):
+        """Следование за игроком с обновлением направления и состояния движения."""
+        if not self.is_active:
+            return
+
+        old_x = self.center_x
+        self.center_x = player_x + offset_x
+        self.center_y = player_y + offset_y
+
+        if self.center_x < old_x:
+            self.last_direction = -1
+            self.is_moving = True
+        elif self.center_x > old_x:
+            self.last_direction = 1
+            self.is_moving = True
+        else:
+            self.is_moving = False
 
 
 class Enemy(Entity, ABC):
