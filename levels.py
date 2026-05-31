@@ -289,6 +289,13 @@ class BaseLevel(arcade.View):
                             AnimatedEasyEnemy(texture, x, y)
                         )
 
+                    elif enemy_type == "enemy_medium":
+                        texture = tm.load_enemy_textures(name, 3)
+                        x, y = enemy_data.center_x, enemy_data.center_y
+                        animated_enemies.append(
+                            AnimatedMediumEnemy(texture, x, y)
+                        )
+
                     # TODO: добавить medium_enemy и hard_enemy
 
             self.enemy_list = animated_enemies

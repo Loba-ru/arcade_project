@@ -400,18 +400,95 @@ class AnimatedEasyEnemy(EasyEnemy):
 
 
 class MediumEnemy(Enemy):
-    """Враг средней сложности."""
+    """Враг средней сложности с рандомными остановками."""
 
-    def __init__(self, x: float, y: float):
+    def __init__(self, image_path: str, x: float, y: float):
         super().__init__(
-            ":resources:images/enemies/slimeBlue.png",
-            1.0,
+            image_path,
+            scale=1.0,
             health=2,
             speed=80,
             damage=35,
         )
         self.center_x = x
         self.center_y = y
+        self.boundary_left = x - 150
+        self.boundary_right = x + 150
+        self.direction = random.choice([-1, 1])
+
+        # Для пауз
+        self.paused = False
+        self.pause_timer = 0
+
+    def update(self, delta_time: float):
+        # Если на паузе
+        if self.paused:
+            self.pause_timer -= delta_time
+            if self.pause_timer <= 0:
+                self.paused = False
+                # Меняем направление после паузы
+                self.direction = random.choice([-1, 1])
+            return
+
+        # Движение
+        self.center_x += self.speed * self.direction * delta_time
+
+        # Границы
+        if self.center_x >= self.boundary_right:
+            self.center_x = self.boundary_right
+            self.direction = -1
+        elif self.center_x <= self.boundary_left:
+            self.center_x = self.boundary_left
+            self.direction = 1
+
+        # Рандомная остановка (0.5% шанс каждый кадр)
+        if random.random() < 0.005:
+            self.paused = True
+            self.pause_timer = random.uniform(0.5, 2.0)  # от 0.5 до 2 секунд
+
+        # Поворот спрайта в сторону движения
+        self.scale_x = self.direction * 0.8
+
+
+class AnimatedMediumEnemy(MediumEnemy):
+    """Средний враг с анимацией (паук)."""
+
+    def __init__(self, textures: list, x: float, y: float):
+        super().__init__(textures[0], x, y)  # textures[0] - idle
+        self.textures = textures
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.15  # скорость смены кадров
+        self.is_walking = False
+
+    def update_animation(self, delta_time: float):
+        """Обновляет анимацию в зависимости от движения."""
+        # Определяем, идёт ли враг
+        self.is_walking = not self.paused and abs(self.change_x) > 0
+
+        if self.is_walking:
+            # Анимация ходьбы (кадры 1 и 2)
+            walk_textures = self.textures[1:]  # spider1, spider2
+            if walk_textures:
+                self.animation_timer += delta_time
+                if self.animation_timer >= self.animation_speed:
+                    self.animation_timer = 0
+                    self.current_frame = (self.current_frame + 1) % len(
+                        walk_textures
+                    )
+                    self.texture = walk_textures[self.current_frame]
+        else:
+            # Idle (кадр 0)
+            self.texture = self.textures[0]
+            self.current_frame = 0
+
+        # Поворот спрайта в сторону движения
+        if self.direction != 0:
+            self.scale_x = self.direction * 0.8
+
+    def update(self, delta_time: float):
+        super().update(delta_time)
+        self.update_animation(delta_time)
 
 
 class HardEnemy(Enemy):
