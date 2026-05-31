@@ -9,7 +9,9 @@
 #     ├── EasyEnemy (Лёгкий враг)
 #     |   └── AnimatedEasyEnemy (Лёгкий враг с анимацией)
 #     ├── MediumEnemy (Средний враг)
+#     |   └── AnimatedMediumEnemy (Средний враг с анимацией)
 #     └── HardEnemy (Тяжёлый враг)
+#         └── AnimatedHardEnemy (Тяжёлый враг с анимацией)
 
 # Иерархия классов внутриигровых предметов:
 # BaseItem (базовый класс)
@@ -492,18 +494,181 @@ class AnimatedMediumEnemy(MediumEnemy):
 
 
 class HardEnemy(Enemy):
-    """Враг высокой сложности."""
+    """Враг высокой сложности (летучая мышь)."""
 
-    def __init__(self, x: float, y: float):
+    def __init__(
+        self,
+        image_path: str,
+        x: float,
+        y: float,
+        fly_moves: int = 10,
+        rest_duration: float = 3.0,
+        fly_height: float = 200,
+    ):
         super().__init__(
-            ":resources:images/enemies/slimePurple.png",
-            1.2,
+            image_path,
+            scale=1.0,
             health=3,
             speed=120,
             damage=50,
         )
+        self.start_x = x
+        self.start_y = y
+
         self.center_x = x
         self.center_y = y
+
+        self.state = "hanging"
+        self.hang_timer = 0
+        self.hang_duration = 1.0
+
+        # Для полёта
+        self.boundary_left = x - 150
+        self.boundary_right = x + 150
+        self.direction = random.choice([-1, 1])
+        self.fly_height = fly_height  # на сколько опускается от start_y
+
+        # Счётчик движений
+        self.move_counter = 0
+        self.move_limit = fly_moves
+
+        # Отдых
+        self.rest_timer = 0
+        self.rest_duration = rest_duration
+        self.is_resting = False
+
+    def start_diving(self):
+        """Начинает пикирование вниз."""
+        self.state = "diving"
+        self.center_x = self.start_x
+        self.center_y = self.start_y
+        self.direction = random.choice([-1, 1])
+
+    def start_flying(self):
+        """Начинает горизонтальный полёт (патрульный режим)."""
+        self.state = "flying"
+        self.move_counter = 0
+
+    def return_to_hang(self):
+        """Возвращается в точку подвеса."""
+        self.state = "returning"
+        self.target_x = self.start_x
+        self.target_y = self.start_y
+
+    def update(self, delta_time: float):
+        if self.state == "hanging":
+            # Висим на потолке
+            self.center_x = self.start_x
+            self.center_y = self.start_y
+            self.scale_x = self.direction * 0.8
+
+            # Если режим отдыха
+            if self.is_resting:
+                self.rest_timer += delta_time
+                if self.rest_timer >= self.rest_duration:
+                    self.is_resting = False
+                    self.rest_timer = 0
+                    self.hang_timer = 0
+                return
+
+            # Обычное зависание перед полётом
+            self.hang_timer += delta_time
+            if self.hang_timer >= self.hang_duration:
+                self.hang_timer = 0
+                self.start_diving()
+
+        elif self.state == "diving":
+            # Пикирование под углом вниз
+            self.center_x += self.speed * self.direction * delta_time
+            self.center_y -= self.speed * delta_time * 0.7
+            self.scale_x = self.direction * 0.8
+
+            if self.center_y <= self.start_y - self.fly_height:
+                self.center_y = self.start_y - self.fly_height
+                self.start_flying()
+
+        elif self.state == "flying":
+            # Патрульный режим
+            self.center_x += self.speed * self.direction * delta_time
+            self.center_y = self.start_y - self.fly_height
+            self.scale_x = self.direction * 0.8
+
+            if self.center_x >= self.boundary_right:
+                self.center_x = self.boundary_right
+                self.direction = -1
+                self.move_counter += 1
+            elif self.center_x <= self.boundary_left:
+                self.center_x = self.boundary_left
+                self.direction = 1
+                self.move_counter += 1
+
+            if self.move_counter >= self.move_limit:
+                self.return_to_hang()
+
+        elif self.state == "returning":
+            # Возвращаемся к месту подвеса
+            dx = self.target_x - self.center_x
+            dy = self.target_y - self.center_y
+            distance = (dx**2 + dy**2) ** 0.5
+
+            if distance < 10:
+                self.center_x = self.target_x
+                self.center_y = self.target_y
+                self.state = "hanging"
+                self.is_resting = True
+                self.rest_timer = 0
+            else:
+                self.center_x += dx * 0.1
+                self.center_y += dy * 0.1
+                self.scale_x = self.direction * 0.8
+
+
+class AnimatedHardEnemy(HardEnemy):
+    """Тяжёлый враг с анимацией (летучая мышь)."""
+
+    def __init__(
+        self,
+        textures: list,
+        x: float,
+        y: float,
+        fly_moves: int = 10,
+        rest_duration: float = 3.0,
+        fly_height: float = 200,
+    ):
+        super().__init__(
+            textures[0], x, y, fly_moves, rest_duration, fly_height
+        )
+        self.textures = textures  # [bat0, bat1, bat2]
+        self.current_frame = 0
+        self.animation_timer = 0
+        self.animation_speed = 0.15
+        self.is_flying = False  # флаг: летит или висит
+
+    def update_animation(self, delta_time: float):
+        """Обновляет анимацию в зависимости от состояния."""
+        # Летит (diving, flying, returning) - кадры 1, 2
+        # Висит (hanging) - кадр 0
+        if self.state in ("diving", "flying", "returning"):
+            walk_textures = self.textures[1:]  # bat1, bat2
+            if walk_textures:
+                self.animation_timer += delta_time
+                if self.animation_timer >= self.animation_speed:
+                    self.animation_timer = 0
+                    self.current_frame = (self.current_frame + 1) % len(
+                        walk_textures
+                    )
+                    self.texture = walk_textures[self.current_frame]
+        else:  # hanging
+            self.texture = self.textures[0]
+            self.current_frame = 0
+
+        # Поворот спрайта в сторону движения
+        if self.direction != 0:
+            self.scale_x = self.direction * 0.8
+
+    def update(self, delta_time: float):
+        super().update(delta_time)
+        self.update_animation(delta_time)
 
 
 class BaseItem(arcade.Sprite):

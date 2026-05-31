@@ -270,19 +270,28 @@ class BaseLevel(arcade.View):
             if self.game_manager.has_all_gems:
                 for enemy_data in self.enemy_list:
                     enemy_type = enemy_data.properties.get("type")
+                    x, y = enemy_data.center_x, enemy_data.center_y
+                    texture = tm.load_enemy_textures("ghost", 2)
+
+                    # Все враги становятся лёгкими - призраками с разным scale
+                    enemy = AnimatedEasyEnemy(texture, x, y)
                     if enemy_type == "easy_enemy":
-                        texture = tm.load_enemy_textures("ghost", 2)
-                        x, y = enemy_data.center_x, enemy_data.center_y
-                        animated_enemies.append(
-                            AnimatedEasyEnemy(texture, x, y)
-                        )
+                        enemy.scale = 1.0
+                    elif enemy_type == "enemy_medium":
+                        enemy.scale = 1.5
+                    elif enemy_type == "hard_enemy":
+                        enemy.scale = 2.0
+                    else:
+                        enemy.scale = 1.0
+                    animated_enemies.append(enemy)
+
                 self.enemy_total_count = len(self.enemy_list)
             else:
                 for enemy_data in self.enemy_list:
                     enemy_type = enemy_data.properties.get("type")
-                    name = enemy_data.properties.get("name", "slime_green")
 
                     if enemy_type == "easy_enemy":
+                        name = enemy_data.properties.get("name", "slime_green")
                         texture = tm.load_enemy_textures(name, 2)
                         x, y = enemy_data.center_x, enemy_data.center_y
                         animated_enemies.append(
@@ -290,13 +299,36 @@ class BaseLevel(arcade.View):
                         )
 
                     elif enemy_type == "enemy_medium":
+                        name = enemy_data.properties.get(
+                            "name", "spider_green"
+                        )
                         texture = tm.load_enemy_textures(name, 3)
                         x, y = enemy_data.center_x, enemy_data.center_y
                         animated_enemies.append(
                             AnimatedMediumEnemy(texture, x, y)
                         )
 
-                    # TODO: добавить medium_enemy и hard_enemy
+                    elif enemy_type == "hard_enemy":
+                        name = enemy_data.properties.get("name", "bat_green")
+                        fly_moves = enemy_data.properties.get("fly_moves", 10)
+                        rest_duration = enemy_data.properties.get(
+                            "rest_duration", 3.0
+                        )
+                        fly_height = enemy_data.properties.get(
+                            "fly_height", 200
+                        )
+                        textures = tm.load_enemy_textures(name, 3)
+                        x, y = enemy_data.center_x, enemy_data.center_y
+                        animated_enemies.append(
+                            AnimatedHardEnemy(
+                                textures,
+                                x,
+                                y,
+                                fly_moves,
+                                rest_duration,
+                                fly_height,
+                            )
+                        )
 
             self.enemy_list = animated_enemies
         else:

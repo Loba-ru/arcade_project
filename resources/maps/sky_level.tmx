@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="16" nextobjectid="8">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="16" nextobjectid="9">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="1" name="platform" width="30" height="15">
   <data encoding="base64" compression="zlib">
@@ -88,6 +88,15 @@
    <properties>
     <property name="name" value="spider_purple"/>
     <property name="type" value="enemy_medium"/>
+   </properties>
+  </object>
+  <object id="8" gid="155" x="3072" y="768" width="128" height="128">
+   <properties>
+    <property name="fly_height" type="int" value="320"/>
+    <property name="fly_moves" type="int" value="5"/>
+    <property name="name" value="bat_purple"/>
+    <property name="rest_duration" type="int" value="3"/>
+    <property name="type" value="hard_enemy"/>
    </properties>
   </object>
  </objectgroup>
