@@ -68,6 +68,9 @@ class BaseLevel(arcade.View):
         self.center_hint_background_list = None
         self.victory_block_list = None
 
+        self.ui_top_background_list = None
+        self.ui_bottom_background_list = None
+
         self.door_active = True
         self.is_paused = False
         self.central_hint_timer = 0
@@ -106,6 +109,8 @@ class BaseLevel(arcade.View):
         self.ui_right_text = None
         self.center_hint_text = None
         self.center_hint_background = None
+        self.ui_top_background = None
+        self.ui_bottom_background = None
         self.ui_coin_text = None
         self.heart_texts = None
         self.test_text = None
@@ -358,12 +363,15 @@ class BaseLevel(arcade.View):
     def setup_gui(self):
         """Создание UI элементов."""
         screen_width, screen_height = self.game_manager.window.get_size()
+
+        self.setup_ui_backgrounds()
+
         self.ui_level_difficulty_text = arcade.Text(
             self.game_manager.get_level_difficulty_text(),
             screen_width // 2,
             screen_height - 40,
             arcade.color.WHITE,
-            16,
+            20,
             anchor_x="center",
             batch=self.batch,
         )
@@ -372,7 +380,7 @@ class BaseLevel(arcade.View):
             20,
             20,
             arcade.color.WHITE,
-            16,
+            22,
             anchor_x="left",
             batch=self.batch,
         )
@@ -381,7 +389,7 @@ class BaseLevel(arcade.View):
             screen_width - 20,
             20,
             arcade.color.WHITE,
-            16,
+            22,
             anchor_x="right",
             batch=self.batch,
         )
@@ -411,7 +419,7 @@ class BaseLevel(arcade.View):
             screen_width - 20,
             screen_height - 40,
             arcade.color.WHITE,
-            20,
+            22,
             anchor_x="right",
             batch=self.batch,
         )
@@ -430,7 +438,7 @@ class BaseLevel(arcade.View):
             self.heart_texts.append(heart)
 
         self.test_text = arcade.Text(
-            "W - победа | L - проигрыш | ESC - меню",
+            "F11 - экран | ESC - меню",
             screen_width // 2,
             20,
             arcade.color.WHITE,
@@ -449,6 +457,28 @@ class BaseLevel(arcade.View):
 
     def resize_gui(self, screen_width, screen_height):
         """Пересчёт позиций GUI при изменении размера окна."""
+        if self.ui_top_background_list:
+            for bg_sprite in self.ui_top_background_list:
+                bg_sprite.center_x = screen_width // 2
+                bg_sprite.center_y = screen_height - 30
+
+                texture = bg_sprite.texture
+                if texture:
+                    scale_x = screen_width / texture.width
+                    bg_sprite.scale = scale_x
+                    bg_sprite.scale_y = 1
+
+        if self.ui_bottom_background_list:
+            for bg_sprite in self.ui_bottom_background_list:
+                bg_sprite.center_x = screen_width // 2
+                bg_sprite.center_y = 30
+
+                texture = bg_sprite.texture
+                if texture:
+                    scale_x = screen_width / texture.width
+                    bg_sprite.scale = scale_x
+                    bg_sprite.scale_y = 1
+
         if self.ui_level_difficulty_text:
             self.ui_level_difficulty_text.x = screen_width // 2
             self.ui_level_difficulty_text.y = screen_height - 40
@@ -545,16 +575,27 @@ class BaseLevel(arcade.View):
 
     def draw_gui(self):
         """Отрисовка GUI."""
+        if self.ui_top_background_list:
+            self.ui_top_background_list.draw()
+
+        if self.ui_bottom_background_list:
+            self.ui_bottom_background_list.draw()
+
         if (
             self.center_hint_text
             and self.center_hint_text.text
             and self.center_hint_background_list
         ):
             self.center_hint_background_list.draw()
+
         self.batch.draw()
 
     def on_update(self, delta_time):
         """Обновление состояния уровня."""
+        # Если физика отключена (победа/портал), ничего не обновляем
+        if self.physics_engine is None:
+            return
+
         if self.is_paused:
             return
 
@@ -581,12 +622,17 @@ class BaseLevel(arcade.View):
                 self.clear_central_hint()
 
         if self.physics_engine.is_on_ladder():
+            # # Выравнивание по центру лестницы
+            self.align_to_ladder()
+
+            # Собственно движение по лестнице
             if self.up_pressed and not self.down_pressed:
                 self.player.change_y = LADDER_SPEED
             elif self.down_pressed and not self.up_pressed:
                 self.player.change_y = -LADDER_SPEED
             elif not self.up_pressed and not self.down_pressed:
                 self.player.change_y = 0
+
         else:
             if self.player.change_y in (LADDER_SPEED, -LADDER_SPEED):
                 self.player.change_y = 0
@@ -774,10 +820,13 @@ class BaseLevel(arcade.View):
                 # Обновление задачи победы (только для 2-го захода на ground)
                 if self.victory_task == "collect_key":
                     self.victory_task = "save_friend"
-                    next_hint = "Откройте клетку!"
-                    arcade.schedule_once(
-                        lambda dt: self.show_central_hint(next_hint), 2.0
-                    )
+
+                    def show_cage_hint(dt):
+                        # Показываем подсказку только если друг ещё не активирован
+                        if not self.friend_activated:
+                            self.show_central_hint("Откройте клетку!")
+
+                    arcade.schedule_once(show_cage_hint, 2.0)
 
                 # Обновление задачи для 1-го захода на ground, "dungeon", "sky"
                 elif self.current_task == "find_key":
@@ -881,6 +930,7 @@ class BaseLevel(arcade.View):
 
         if self.game_manager.in_victory_portal:
             if not hits:
+                self.physics_engine = None
                 self.game_manager.check_victory_from_portal()
 
         else:
@@ -915,6 +965,7 @@ class BaseLevel(arcade.View):
                         self.game_manager.window.sound_manager.play(
                             "portal", volume=0.7
                         )
+                    self.physics_engine = None
                     self.game_manager.change_level(self.next_level_name)
 
     def show_central_hint(self, message: str):
@@ -964,9 +1015,9 @@ class BaseLevel(arcade.View):
                 self.player.change_y = PLAYER_JUMP_SPEED
         elif key == arcade.key.ESCAPE:
             self.is_paused = not self.is_paused
-        elif key == arcade.key.W:
+        elif key == arcade.key.W and GAMEPLAY_USE_DUMMY:
             print("[DEBUG] W pressed — победа")
-        elif key == arcade.key.L:
+        elif key == arcade.key.L and GAMEPLAY_USE_DUMMY:
             print("[DEBUG] L pressed — поражение")
 
     def on_key_release(self, key, modifiers):
@@ -1189,6 +1240,13 @@ class BaseLevel(arcade.View):
 
     def create_trail_effect(self):
         """Создаёт шлейф за игроком в зависимости от собранных камней."""
+        if (
+            self.friend_activated
+            or self.victory_task == "enter_portal"
+            or self.game_manager.in_victory_portal
+        ):
+            return
+
         total_gems = self.player.inventory.total_gems()
         if total_gems == 0 or abs(self.player.change_x) == 0:
             return
@@ -1480,6 +1538,52 @@ class BaseLevel(arcade.View):
                 self.show_central_hint("Подберите ключ!")
 
         arcade.schedule_once(show_pickup_hint, 2.0)
+
+    def setup_ui_backgrounds(self):
+        """Создаёт фоны для верхнего и нижнего UI."""
+        screen_width, screen_height = self.game_manager.window.get_size()
+
+        # Верхний фон (сердечки, монеты) — создаём текстуру нужного размера
+        texture_top = arcade.Texture.create_empty(
+            "ui_top_bg", size=(screen_width, 60), color=(0, 0, 0, 20)
+        )
+        self.ui_top_background = arcade.Sprite(texture_top)
+        self.ui_top_background.center_x = screen_width // 2
+        self.ui_top_background.center_y = screen_height - 30
+        self.ui_top_background_list = arcade.SpriteList()
+        self.ui_top_background_list.append(self.ui_top_background)
+
+        # Нижний фон (ключи, цели)
+        texture_bottom = arcade.Texture.create_empty(
+            "ui_bottom_bg", size=(screen_width, 60), color=(0, 0, 0, 20)
+        )
+        self.ui_bottom_background = arcade.Sprite(texture_bottom)
+        self.ui_bottom_background.center_x = screen_width // 2
+        self.ui_bottom_background.center_y = 30
+        self.ui_bottom_background_list = arcade.SpriteList()
+        self.ui_bottom_background_list.append(self.ui_bottom_background)
+
+    def align_to_ladder(self):
+        """Выравнивание игрока по центру лестницы."""
+        if not self.ladder_list:
+            return
+
+        for ladder in self.ladder_list:
+            # Проверяем, на этой ли лестнице стоит игрок
+            if (
+                abs(self.player.center_x - ladder.center_x) < 96
+                and abs(self.player.center_y - ladder.center_y) < 96
+            ):
+                # Двигаем игрока к центру лестницы
+                if self.player.center_x < ladder.center_x:
+                    self.player.center_x = min(
+                        ladder.center_x, self.player.center_x + 2
+                    )
+                elif self.player.center_x > ladder.center_x:
+                    self.player.center_x = max(
+                        ladder.center_x, self.player.center_x - 2
+                    )
+                break  # Нашли лестницу, выходим
 
 
 class GroundLevel(BaseLevel):
