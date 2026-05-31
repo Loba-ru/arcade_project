@@ -66,6 +66,7 @@ class BaseLevel(arcade.View):
         self.cage_list = None
         self.all_walls = None
         self.center_hint_background_list = None
+        self.victory_block_list = None
 
         self.door_active = True
         self.is_paused = False
@@ -89,6 +90,16 @@ class BaseLevel(arcade.View):
         self.key_dropped_from_enemy = False
         self.enemy_total_count = 0
         self.enemies_killed = 0
+        self.last_death_reason = None
+        self.tickle_cooldown = 0
+
+        # Только для 2-го захода ground:
+        # "defeat_enemies", "collect_key", "save_friend", "enter_portal"
+        self.victory_task = None
+
+        # Для всех уровней (кроме 2-го захода ground)
+        # "find_key", "find_gems", "open_door", "enter_portal"
+        self.current_task = None
 
         self.ui_level_difficulty_text = None
         self.ui_left_text = None
@@ -104,6 +115,22 @@ class BaseLevel(arcade.View):
         self.set_background()
         self.load_map()
         self.spawn_player()
+
+        # Инициализация задачи победы (с задержкой) только для 2-го захода на ground
+        if self.level_name == "ground" and self.game_manager.has_all_gems:
+            self.victory_task = "defeat_enemies"
+            hint = "Победите всех врагов-призраков!"
+            arcade.schedule_once(lambda dt: self.show_central_hint(hint), 2.0)
+        else:
+            # Для 1-го захода на ground, для "dungeon" и для "sky"
+            if self.level_name == "ground" or self.level_name == "dungeon":
+                self.current_task = "find_key"
+                hint = "Найдите ключ!"
+            elif self.level_name == "sky":
+                self.current_task = "find_gems"
+                hint = "Найдите драгоценности!"
+            arcade.schedule_once(lambda dt: self.show_central_hint(hint), 2.0)
+
         self.setup_physics()
         self.setup_cameras()
         self.setup_gui()
@@ -206,6 +233,12 @@ class BaseLevel(arcade.View):
                 "cage_trigger"
             )
             self.cage_list = self.tile_map.sprite_lists.get("cage")
+
+            # Блокировка портала победы (только для 2-го захода на ground)
+            self.victory_block_list = self.tile_map.sprite_lists.get(
+                "victory_block"
+            )
+
         else:
             self.start_list = self.tile_map.sprite_lists.get("startA")
             self.entry_exit_list = self.tile_map.sprite_lists.get("entry_exit")
@@ -293,6 +326,7 @@ class BaseLevel(arcade.View):
             self.platform_list,
             self.collision_list,
             self.block_list,
+            self.victory_block_list,
         ):
             if layer:
                 self.all_walls.extend(layer)
@@ -404,8 +438,9 @@ class BaseLevel(arcade.View):
             anchor_x="center",
             batch=self.batch,
         )
+        gems = self.game_manager.has_all_gems
         level_names = {
-            "ground": "УРОВЕНЬ 1. Земля",
+            "ground": ("УРОВЕНЬ 4. Земля" if gems else "УРОВЕНЬ 1. Земля"),
             "dungeon": "УРОВЕНЬ 2. Подземелье",
             "sky": "УРОВЕНЬ 3. Небо",
         }
@@ -596,7 +631,21 @@ class BaseLevel(arcade.View):
                 self.player, self.cage_trigger_list
             )
             if hits:
+                # Друг спасён
                 self.friend_activated = True
+
+                # Обновление задачи победы и разблокировка портала победы
+                if self.victory_task == "save_friend":
+                    self.victory_task = "enter_portal"
+
+                    # Удаляем блокировку c портала победы
+                    if self.victory_block_list:
+                        for block in self.victory_block_list[:]:
+                            block.remove_from_sprite_lists()
+                        self.victory_block_list = None
+
+                    self.show_central_hint("Вернитесь домой!")
+
                 self.friend.activate()
 
                 self.key_count -= 1
@@ -662,11 +711,51 @@ class BaseLevel(arcade.View):
                 gem.remove_from_sprite_lists()
                 print(f"[DEBUG] Подобран {gem.gem_type}!")
 
+                self.show_central_hint(f"Найден {gem.name}!")
+
                 if self.player.inventory.total_gems() >= self.total_gems:
                     self.game_manager.has_all_gems = True
                     print("[DEBUG] Все драгоценности собраны!")
-                    self.show_central_hint("Невосприимчивость к врагам!")
 
+                    # Звук получения усиления от кристаллов
+                    if hasattr(self.game_manager.window, "sound_manager"):
+                        arcade.schedule_once(
+                            lambda dt: self.game_manager.window.sound_manager.play(
+                                "powerup", volume=0.7
+                            ),
+                            2.0,
+                        )
+
+                    hint = f"Получена невосприимчивость к врагам!"
+                    arcade.schedule_once(
+                        lambda dt: self.show_central_hint(hint), 2.0
+                    )
+
+                    # Проверяем, найден ли уже ключ
+                    if self.key_count > 0:
+                        self.current_task = "open_door"
+
+                        def show_door_hint(dt):
+                            if self.door_active:
+                                self.show_central_hint("Откройте дверь!")
+
+                        arcade.schedule_once(show_door_hint, 4.0)
+                    else:
+                        self.current_task = "find_key"
+
+                        def show_key_hint(dt):
+                            if self.key_count == 0:
+                                self.show_central_hint("Найдите ключ!")
+
+                        arcade.schedule_once(show_key_hint, 4.0)
+
+                else:
+                    hint = "Найдите все драгоценности!"
+                    arcade.schedule_once(
+                        lambda dt: self.show_central_hint(hint), 2.0
+                    )
+
+        # Подбор ключа
         if self.key_list:
             key_hit = arcade.check_for_collision_with_list(
                 self.player, self.key_list
@@ -680,6 +769,34 @@ class BaseLevel(arcade.View):
                 key.remove_from_sprite_lists()
                 self.key_count += 1
                 print(f"[DEBUG] Подобран ключ! Всего ключей: {self.key_count}")
+                self.show_central_hint("Подобран ключ!")
+
+                # Обновление задачи победы (только для 2-го захода на ground)
+                if self.victory_task == "collect_key":
+                    self.victory_task = "save_friend"
+                    next_hint = "Откройте клетку!"
+                    arcade.schedule_once(
+                        lambda dt: self.show_central_hint(next_hint), 2.0
+                    )
+
+                # Обновление задачи для 1-го захода на ground, "dungeon", "sky"
+                elif self.current_task == "find_key":
+                    self.current_task = "open_door"
+
+                    def show_door_hint(dt):
+                        if self.door_active:
+                            self.show_central_hint("Откройте дверь!")
+
+                    arcade.schedule_once(show_door_hint, 2.0)
+
+                elif self.current_task == "find_gems":
+                    # На sky ключ найден, но камни ещё не собраны
+                    # Оставляем задачу find_gems, не меняем current_task
+                    def show_gems_hint(dt):
+                        if not self.game_manager.has_all_gems:
+                            self.show_central_hint("Найдите драгоценности!")
+
+                    arcade.schedule_once(show_gems_hint, 2.0)
 
         # Сбор монет с анимацией
         if self.coin_list:
@@ -715,6 +832,9 @@ class BaseLevel(arcade.View):
                 print("[DEBUG] Game Over! Выход...")
                 arcade.exit()
             self.pending_game_over = False
+
+        if self.tickle_cooldown > 0:
+            self.tickle_cooldown -= 1
 
     def update_camera(self):
         """Плавное обновление камеры с dead zone."""
@@ -752,15 +872,6 @@ class BaseLevel(arcade.View):
         self.world_camera.position = (smooth_x, smooth_y)
 
     def check_portal(self):
-        """
-        print(
-            f"[PORTAL] check_portal вызван на уровне {self.level_name}, "
-            f"has_all_gems={self.game_manager.has_all_gems}, "
-            f"friend_activated={self.friend_activated}, "
-            f"in_victory_portal={self.game_manager.in_victory_portal}"
-        )
-        """
-
         if not self.entry_exit_list:
             return
 
@@ -771,19 +882,39 @@ class BaseLevel(arcade.View):
         if self.game_manager.in_victory_portal:
             if not hits:
                 self.game_manager.check_victory_from_portal()
+
         else:
             if hits:
-                if hasattr(self.game_manager.window, "sound_manager"):
-                    self.game_manager.window.sound_manager.play(
-                        "portal", volume=0.7
-                    )
+                # Победа на ground (2-й заход)
                 if (
                     self.level_name == "ground"
                     and self.game_manager.has_all_gems
-                    # and self.friend_activated
                 ):
-                    self.game_manager.in_victory_portal = True
-                else:
+                    # Пускаем в портал
+                    if self.victory_task == "enter_portal":
+                        if hasattr(self.game_manager.window, "sound_manager"):
+                            self.game_manager.window.sound_manager.play(
+                                "portal", volume=0.7
+                            )
+                        self.game_manager.in_victory_portal = True
+                        self.show_central_hint("Пройдите через портал!")
+
+                    # Выводим подсказки для пропуска в портал
+                    elif self.victory_task == "defeat_enemies":
+                        self.show_central_hint(
+                            "Победите всех врагов-призраков!"
+                        )
+                    elif self.victory_task == "collect_key":
+                        self.show_central_hint("Подберите ключ!")
+                    elif self.victory_task == "save_friend":
+                        self.show_central_hint("Откройте клетку!")
+
+                # Обычный переход между уровнями
+                elif self.next_level_name:
+                    if hasattr(self.game_manager.window, "sound_manager"):
+                        self.game_manager.window.sound_manager.play(
+                            "portal", volume=0.7
+                        )
                     self.game_manager.change_level(self.next_level_name)
 
     def show_central_hint(self, message: str):
@@ -803,11 +934,17 @@ class BaseLevel(arcade.View):
 
     def on_key_press(self, key, modifiers):
         """Обработка нажатия клавиш."""
-        if self.game_manager.in_victory_portal:
+
+        # Блокировка управления после спасения друга (только движение влево/вправо)
+        if (
+            self.victory_task == "enter_portal"
+            or self.game_manager.in_victory_portal
+        ):
             if key == arcade.key.LEFT:
                 self.player.change_x = -PLAYER_MOVEMENT_SPEED
             return
 
+        # В остальных случаях управление не блокируется
         if key == arcade.key.LEFT:
             self.player.change_x = -PLAYER_MOVEMENT_SPEED
         elif key == arcade.key.RIGHT:
@@ -876,7 +1013,9 @@ class BaseLevel(arcade.View):
                 self.invincible_frames = 60
                 self.pending_respawn = True
 
-                if not self.player.is_alive:
+                if self.player.is_alive:
+                    self.last_death_reason = "hazard"
+                else:
                     self.pending_game_over = True
 
     def respawn_player(self):
@@ -888,6 +1027,15 @@ class BaseLevel(arcade.View):
         self.player.alpha = 255
         self.hurt_flash_timer = 0
         self.hurt_freeze_timer = 0
+
+        if self.last_death_reason == "hazard":
+            self.show_central_hint("Остерегайтесь ловушек!")
+        elif self.last_death_reason == "enemy":
+            self.show_central_hint("Остерегайтесь врагов-животных!")
+        elif self.last_death_reason == "cage":
+            self.show_central_hint("Не прикасайтесь к клетке!")
+
+        self.last_death_reason = None
 
     def check_door(self):
         """Проверка касания триггера перед дверью."""
@@ -933,6 +1081,10 @@ class BaseLevel(arcade.View):
             self.door_list = None
 
             self.door_active = False
+            if self.current_task == "open_door":
+                self.current_task = "enter_portal"
+            self.show_central_hint("Войдите в портал!")
+
         else:
             if self.key_count == 0:
                 self.show_central_hint("Нужен ключ!")
@@ -998,7 +1150,7 @@ class BaseLevel(arcade.View):
                     if self.key_count == 0:
                         return "Цель: подобрать ключ"
                     else:
-                        return "Цель: спасти друга!"
+                        return "Цель: открыть клетку!"
             else:
                 return "Цель: победить врагов!"
 
@@ -1143,6 +1295,17 @@ class BaseLevel(arcade.View):
             if arcade.check_for_collision(self.player, enemy):
 
                 if self.game_manager.has_all_gems:
+                    # Звук хихиканья при касании с врагами-животными (не на ground)
+                    if self.level_name != "ground":
+                        if self.tickle_cooldown == 0 and hasattr(
+                            self.game_manager.window, "sound_manager"
+                        ):
+                            self.game_manager.window.sound_manager.play(
+                                "tickle", volume=0.5
+                            )
+                            self.tickle_cooldown = 120
+                        continue
+
                     if self.level_name == "ground":
                         if hasattr(enemy, "start_dying") and not getattr(
                             enemy, "_death_started", False
@@ -1150,11 +1313,12 @@ class BaseLevel(arcade.View):
                             enemy._death_started = True
                             enemy.start_dying()
 
+                            # Призраки лопаются, как пузырьки
                             if hasattr(
                                 self.game_manager.window, "sound_manager"
                             ):
                                 self.game_manager.window.sound_manager.play(
-                                    "hit", volume=0.4
+                                    "pop", volume=0.8
                                 )
                             print(f"[DEBUG] Враг повержен!")
                             self.game_manager.enemies_defeated += 1
@@ -1162,10 +1326,17 @@ class BaseLevel(arcade.View):
 
                             for _ in range(25):
                                 particle = ExplosionEffect(
-                                    enemy.center_x, enemy.center_y
+                                    enemy.center_x, enemy.center_y + 64
                                 )
                                 self.dust_particles.append(particle)
 
+                            # Обновление задачи победы
+                            if (
+                                self.victory_task == "defeat_enemies"
+                                and self.enemies_killed
+                                >= self.enemy_total_count
+                            ):
+                                self.victory_task = "collect_key"
                             if (
                                 self.enemies_killed == self.enemy_total_count
                                 and not self.key_dropped_from_enemy
@@ -1206,9 +1377,13 @@ class BaseLevel(arcade.View):
                                 f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}"
                             )
                             self.game_manager.lives = self.player.lives
-                            self.respawn_player()
-                            if not self.player.is_alive:
+
+                            if self.player.is_alive:
+                                self.last_death_reason = "enemy"
+                            else:
                                 self.pending_game_over = True
+
+                            self.respawn_player()
                     break
 
     def check_cage_collision(self):
@@ -1216,13 +1391,24 @@ class BaseLevel(arcade.View):
         if not self.cage_trigger_list:
             return
 
-        if self.game_manager.has_all_gems:
-            return
-
         hits = arcade.check_for_collision_with_list(
             self.player, self.cage_trigger_list
         )
         if not hits:
+            return
+
+        # Показываем подсказку всегда при контакте с клеткой
+        if self.key_count == 0:
+            self.show_central_hint("Нужен ключ!")
+
+        elif self.key_count > 0 and not self.key_dropped_from_enemy:
+            self.show_central_hint("Ключ не подходит!")
+            next_hint = "Откройте дверь!"
+            arcade.schedule_once(
+                lambda dt: self.show_central_hint(next_hint), 2.0
+            )
+
+        if self.game_manager.has_all_gems:
             return
 
         if self.invincible_frames > 0:
@@ -1250,9 +1436,13 @@ class BaseLevel(arcade.View):
                     )
                 print(f"[DEBUG] Потеряна жизнь! Осталось: {self.player.lives}")
                 self.game_manager.lives = self.player.lives
-                self.respawn_player()
-                if not self.player.is_alive:
+
+                if self.player.is_alive:
+                    self.last_death_reason = "cage"
+                else:
                     self.pending_game_over = True
+
+                self.respawn_player()
 
         if hasattr(self.game_manager.window, "sound_manager"):
             self.game_manager.window.sound_manager.play("hit", volume=0.3)
@@ -1283,7 +1473,13 @@ class BaseLevel(arcade.View):
 
         print(f"[DEBUG] Ключ выпал в позиции ({x}, {y + 80})")
 
-        self.show_central_hint("Выпал ключ от клетки!")
+        self.show_central_hint("Выпал ключ!")
+
+        def show_pickup_hint(dt):
+            if self.key_count == 0:  # Ключ всё ещё не поднят
+                self.show_central_hint("Подберите ключ!")
+
+        arcade.schedule_once(show_pickup_hint, 2.0)
 
 
 class GroundLevel(BaseLevel):

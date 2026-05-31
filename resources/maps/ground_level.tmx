@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="20" nextobjectid="9">
+<map version="1.10" tiledversion="1.12.1" orientation="orthogonal" renderorder="right-down" width="30" height="15" tilewidth="128" tileheight="128" infinite="0" nextlayerid="21" nextobjectid="10">
  <tileset firstgid="1" source="../images/tiles/tiles.tsx"/>
  <layer id="15" name="coins" width="30" height="15">
   <data encoding="base64" compression="zlib">
@@ -76,6 +76,9 @@
  </objectgroup>
  <objectgroup id="19" name="cage" visible="0">
   <object id="8" gid="58" x="903.75" y="1792" width="120.202" height="117.25"/>
+ </objectgroup>
+ <objectgroup id="20" name="victory_block">
+  <object id="9" gid="58" x="0" y="1792" width="100" height="100"/>
  </objectgroup>
  <objectgroup id="17" name="cage_trigger">
   <object id="7" gid="153" x="886.688" y="1792" width="148.938" height="138.75">

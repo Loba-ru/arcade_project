@@ -364,11 +364,11 @@ class AnimatedEasyEnemy(EasyEnemy):
         self._death_started = False
 
     def start_dying(self):
-        """Начинает процесс смерти (мигание)."""
+        """Начинает процесс смерти (подбрасывание вверх)."""
         self.is_dying = True
         self.death_timer = 0
-        self.change_y = 5
-        self.change_x = random.uniform(-2, 2)
+        self.change_y = 200
+        self.change_x = random.uniform(-100, 100)
 
     def update_animation(self, delta_time: float):
         self.animation_timer += delta_time
@@ -385,6 +385,11 @@ class AnimatedEasyEnemy(EasyEnemy):
                 self.alpha = 128
             else:
                 self.alpha = 255
+
+            # Подбрасывание вверх
+            self.center_x += self.change_x * delta_time
+            self.center_y += self.change_y * delta_time
+            self.change_y -= 400 * delta_time  # гравитация
 
             if self.death_timer >= self.death_duration:
                 self.kill()
@@ -430,6 +435,7 @@ class BaseItem(arcade.Sprite):
     def __init__(self, path_or_texture, scale, gem_type, x, y):
         super().__init__(path_or_texture, scale)
         self.gem_type = gem_type
+        self.name = gem_type
         self.center_x = x
         self.center_y = y
 
@@ -444,6 +450,7 @@ class Emerald(BaseItem):
 
     def __init__(self, image_path: str, x, y):
         super().__init__(image_path, GEM_SCALE, "emerald", x, y)
+        self.name = "Изумруд"
 
 
 class Sapphire(BaseItem):
@@ -451,6 +458,7 @@ class Sapphire(BaseItem):
 
     def __init__(self, image_path: str, x, y):
         super().__init__(image_path, GEM_SCALE, "sapphire", x, y)
+        self.name = "Сапфир"
 
 
 class Ruby(BaseItem):
@@ -458,6 +466,7 @@ class Ruby(BaseItem):
 
     def __init__(self, image_path: str, x, y):
         super().__init__(image_path, GEM_SCALE, "ruby", x, y)
+        self.name = "Рубин"
 
 
 class Key(BaseItem):
